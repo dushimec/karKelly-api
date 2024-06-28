@@ -1,29 +1,4 @@
 
-# NodeJs: Build The Complete E-Commerce Web API
-
-
-# Introduction
-This repository is related to Udemy course of NodeJs: Build The Complete E-Commerce Web API
-
-[Join now here](https://bit.ly/3biGVp9)
-
-
-# Run
-
-### Install
-
-```
-npm install
-```
-
-### Start API
-
-```
-npm start
-```
-
-# Routes
-
 ### Products
 
 ```
@@ -62,7 +37,7 @@ GET users count: /api/v1/users/get/count
 #### Register new user
 
 ```
-POST     /api/v1/users/register
+POST     /api/v1/auth/register
 ```
 
 #### Login user
@@ -70,13 +45,5 @@ POST     /api/v1/users/register
 To login the user and get the auth token you can use:
 
 ```
-POST     /api/v1/users/login
+POST     /api/v1/auth/login
 ```
-
-
-
-# Trello Board
-Pick up one task from the board and create the pull request to get the review of every line of the code, to be like in a real world experience!
-
-[Trello Board Link](https://trello.com/invite/b/uOTd4Tce/05d87401c9e950f8fb48477498789ec2/course-tasks)
-
