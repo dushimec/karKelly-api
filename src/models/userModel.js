@@ -21,14 +21,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "address is required"],
     },
-    city: {
-      type: String,
-      required: [true, "city name is required"],
-    },
-    country: {
-      type: String,
-      required: [true, "country name is required"],
-    },
     phone: {
       type: String,
       required: [true, "phone no is required"],
@@ -41,10 +33,7 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     },
-    answer: {
-      type: String,
-      required: [true, "answer is required"],
-    },
+
     role: {
       type: String,
       default: "user",

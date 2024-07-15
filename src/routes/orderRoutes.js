@@ -4,26 +4,26 @@ import {
   changeOrderStatusController,
   createOrderController,
   getAllOrdersController,
-  getMyOrdersCotroller,
-  paymetsController,
-  singleOrderDetrailsController,
+  getMyOrdersController,
+  paymentsController,
+  singleOrderDetailsController,
 } from "../controllers/orderController.js";
 
-const router = express.Router();
+const orderRoute = express.Router();
 
-router.post("/create", isAuth, createOrderController);
-
-
-router.get("/my-orders", isAuth, getMyOrdersCotroller);
+orderRoute.post("/create", isAuth, createOrderController);
 
 
-router.get("/my-orders/:id", isAuth, singleOrderDetrailsController);
+orderRoute.get("/my-orders", isAuth, getMyOrdersController);
 
 
-router.post("/payments", isAuth, paymetsController);
+orderRoute.get("/my-orders/:id", isAuth, singleOrderDetailsController);
 
-router.get("/admin/get-all-orders", isAuth, isAdmin, getAllOrdersController);
 
-router.put("/admin/order/:id", isAuth, isAdmin, changeOrderStatusController);
+orderRoute.post("/payments", isAuth, paymentsController);
 
-export default router;
+orderRoute.get("/admin/get-all-orders", isAuth, isAdmin, getAllOrdersController);
+
+orderRoute.put("/admin/order/:id", isAuth, isAdmin, changeOrderStatusController);
+
+export default orderRoute;

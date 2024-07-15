@@ -23,10 +23,10 @@ export const loginController = async (req, res) => {
     const { user, token } = await userService.loginUser(email, password);
 
     res.status(200).cookie("token", token, {
-      expires: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-      secure: process.env.NODE_ENV === "development" ? true : false,
-      httpOnly: process.env.NODE_ENV === "development" ? true : false,
-      sameSite: process.env.NODE_ENV === "development" ? true : false,
+      expires: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), 
+      secure: false, 
+      httpOnly: true, 
+      sameSite: "strict", 
     }).send({
       success: true,
       message: "Login Successfully",

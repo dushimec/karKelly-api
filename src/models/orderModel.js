@@ -62,15 +62,15 @@ const orderSchema = new mongoose.Schema(
     },
     tax: {
       type: Number,
-      required: [true, "tax price is require"],
+      required: [false, "tax price is require"],
     },
     shippingCharges: {
       type: Number,
-      required: [true, "item shippingCharges  is require"],
+      required: [false, "item shippingCharges  is require"],
     },
     totalAmount: {
       type: Number,
-      required: [true, "item totalAmount price is require"],
+      required: [false, "item totalAmount price is require"],
     },
     orderStatus: {
       type: String,

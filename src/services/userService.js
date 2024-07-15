@@ -3,9 +3,9 @@ import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
 
 export const registerUser = async (userData) => {
-  const { name, email, password, address, city, country, phone, answer } = userData;
+  const { name, email, password, address,  phone, } = userData;
 
-  if (!name || !email || !password || !city || !address || !country || !phone || !answer) {
+  if (!name || !email || !password || !address || !phone  ) {
     throw new Error("Please Provide All Fields");
   }
 
@@ -20,10 +20,7 @@ export const registerUser = async (userData) => {
     email,
     password,
     address,
-    city,
-    country,
     phone,
-    answer,
   });
 };
 
@@ -68,13 +65,11 @@ export const logoutUser = () => {
 
 export const updateUserProfile = async (userId, userData) => {
   const user = await userModel.findById(userId);
-  const { name, email, address, city, country, phone } = userData;
+  const { name, email, address,  phone } = userData;
 
   if (name) user.name = name;
   if (email) user.email = email;
   if (address) user.address = address;
-  if (city) user.city = city;
-  if (country) user.country = country;
   if (phone) user.phone = phone;
 
   await user.save();
