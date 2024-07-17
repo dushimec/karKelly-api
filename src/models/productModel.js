@@ -1,51 +1,22 @@
 import mongoose from "mongoose";
-
-
-const reviewSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: [true, "name is require"],
-    },
-    rating: {
-      type: Number,
-      default: 0,
-    },
-    comment: {
-      type: String,
-    },
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Users",
-      required: [true, "user require"],
-    },
-  },
-  { timestamps: true }
-);
-
-
 const productSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "product name is required"],
+      required:true,
     },
     description: {
       type: String,
-      required: [true, "produvct description is required"],
+      required: true,
     },
     price: {
       type: Number,
-      required: [true, "product price is required"],
+      required: true,
     },
     stock: {
       type: Number,
-      required: [true, "product stock required"],
+      required: true,
     },
-    // quantity: {
-    //   type: Number,
-    //   required: [true, "product quantity required"],
-    // },
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -56,15 +27,6 @@ const productSchema = new mongoose.Schema(
         url: String,
       },
     ],
-    reviews: [reviewSchema],
-    rating: {
-      type: Number,
-      default: 0,
-    },
-    numReviews: {
-      type: Number,
-      default: 0,
-    },
   },
   { timestamps: true }
 );

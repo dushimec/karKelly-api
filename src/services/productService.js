@@ -26,7 +26,7 @@ export const createProduct = async (productData, file) => {
   if (!file) {
     throw new Error("Please provide product images");
   }
-  
+
   const dataUri = getDataUri(file);
   const cdb = await cloudinary.v2.uploader.upload(dataUri.content);
   const image = {
