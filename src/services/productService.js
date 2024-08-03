@@ -16,7 +16,7 @@ export const getTopProducts = async () => {
   return await productModel.find({}).sort({ rating: -1 }).limit(3);
 };
 
-export const getSingleProduct = async (id) => {
+export const getaSingleProduct = async (id) => {
   return await productModel.findById(id);
 };
 
