@@ -1,9 +1,20 @@
 import * as productService from '../services/productService.js';
 
+
 export const getAllProductsController = async (req, res) => {
-  const { keyword, category } = req.query;
+  const { category } = req.query;
+  console.log('Category received:', category);
   try {
-    const products = await productService.getAllProducts(keyword, category);
+    const products = await productService.getAllProducts(category);
+    console.log('Products found:', products);
+    if (products.length === 0) {
+      return res.status(200).send({
+        success: true,
+        message: "No products found for the specified category",
+        totalProducts: 0,
+        products: [],
+      });
+    }
     res.status(200).send({
       success: true,
       message: "All products fetched successfully",
@@ -19,6 +30,7 @@ export const getAllProductsController = async (req, res) => {
     });
   }
 };
+
 
 export const getTopProductsController = async (req, res) => {
   try {

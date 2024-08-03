@@ -1,0 +1,25 @@
+
+{
+    "category_created": "Icyiciro {{category}} cyakozwe neza",
+    "categories_fetched": "Ibyiciro byabonetse neza",
+    "category_deleted": "Icyiciro cyasibwe neza",
+    "category_updated": "Icyiciro cyavuguruwe neza",
+    "order_placed": "Itegeko ryashyizwe neza",
+    "orders_fetched": "Amategeko yawe",
+    "order_fetched": "Itegeko ryawe ryabonetse",
+    "payment_processed": "Gusaba kwishyura byemewe",
+    "order_status_updated": "Imiterere y'itegeko yavuguruwe",
+    "product_fetched": "Ibicuruzwa byose byabonetse neza",
+    "top_products_fetched": "Ibicuruzwa 3 bya mbere",
+    "product_found": "Igicuruzwa cyabonetse",
+    "product_created": "Igicuruzwa cyakozwe neza",
+    "product_updated": "Ibisobanuro by'igicuruzwa byavuguruwe",
+    "profile_fetched": "Umwirondoro w'umukoresha wabonetse neza",
+    "login_successful": "Kwinjira neza",
+    "logout_successful": "Gusohoka neza",
+    "profile_updated": "Umwirondoro w'umukoresha wavuguruwe",
+    "password_updated": "Ijambo ry'ibanga ryavuguruwe neza",
+    "profile_pic_updated": "Ifoto y'umwirondoro yavuguruwe",
+    "password_reset": "Ijambo ry'ibanga ryawe ryavuguruwe, nyamuneka winjire"
+  }
+  

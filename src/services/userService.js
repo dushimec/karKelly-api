@@ -108,12 +108,12 @@ export const updateUserProfilePic = async (userId, file) => {
   await user.save();
 };
 
-export const resetUserPassword = async (email, newPassword, answer) => {
-  if (!email || !newPassword || !answer) {
+export const resetUserPassword = async (email, newPassword, ) => {
+  if (!email || !newPassword ) {
     throw new Error("Please Provide All Fields");
   }
 
-  const user = await userModel.findOne({ email, answer });
+  const user = await userModel.findOne({ email });
 
   if (!user) {
     throw new Error("Invalid user or answer");

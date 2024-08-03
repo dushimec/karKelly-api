@@ -32,7 +32,7 @@ usersRoutes.put("/update-password", isAuth, udpatePasswordController);
 
 usersRoutes.put("/update-picture", isAuth, singleUpload, updateProfilePicController);
 
-usersRoutes.post("/reset-password", passwordResetController);
+usersRoutes.post("/forget-password", passwordResetController);
 
 
 export default usersRoutes;

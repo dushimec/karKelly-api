@@ -1,0 +1,25 @@
+
+{
+    "category_created": "{{category}} category created successfully",
+    "categories_fetched": "Categories fetched successfully",
+    "category_deleted": "Category deleted successfully",
+    "category_updated": "Category updated successfully",
+    "order_placed": "Order placed successfully",
+    "orders_fetched": "Your orders data",
+    "order_fetched": "Your order fetched",
+    "payment_processed": "Payment request accepted",
+    "order_status_updated": "Order status updated",
+    "product_fetched": "All products fetched successfully",
+    "top_products_fetched": "Top 3 products",
+    "product_found": "Product found",
+    "product_created": "Product created successfully",
+    "product_updated": "Product details updated",
+    "profile_fetched": "User profile fetched successfully",
+    "login_successful": "Login successfully",
+    "logout_successful": "Logout successfully",
+    "profile_updated": "User profile updated",
+    "password_updated": "Password updated successfully",
+    "profile_pic_updated": "Profile picture updated",
+    "password_reset": "Your password has been reset, please login"
+  }
+  

@@ -6,7 +6,7 @@ export const createOrderController = async (req, res) => {
     await orderService.createOrder(orderData);
     res.status(201).send({
       success: true,
-      message: "Order Placed Successfully",
+      message: req.t("order_placed")
     });
   } catch (error) {
     console.log(error);
@@ -29,7 +29,7 @@ export const getMyOrdersController = async (req, res) => {
     }
     res.status(200).send({
       success: true,
-      message: "Your orders data",
+      message: req.t("orders_fetched"),
       totalOrder: orders.length,
       orders,
     });
@@ -54,7 +54,7 @@ export const singleOrderDetailsController = async (req, res) => {
     }
     res.status(200).send({
       success: true,
-      message: "Your order fetched",
+      message: req.t("order_fetched"),
       order,
     });
   } catch (error) {
@@ -73,7 +73,7 @@ export const paymentsController = async (req, res) => {
     const paymentData = await orderService.processPayment(totalAmount);
     res.status(200).send({
       success: true,
-      message: 'Payment request accepted',
+      message: req.t("payment_processed"),
       data: paymentData,
     });
   } catch (error) {
@@ -110,7 +110,7 @@ export const changeOrderStatusController = async (req, res) => {
     await orderService.changeOrderStatus(req.params.id);
     res.status(200).send({
       success: true,
-      message: "Order status updated",
+      message: req.t("order_status_updated"),
     });
   } catch (error) {
     console.log(error);

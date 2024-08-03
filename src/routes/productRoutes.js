@@ -11,6 +11,7 @@ import {
   updateProductController,
   updateProductImageController,
 } from "../controllers/productController.js";
+
 import { singleUpload } from "../middlewares/multer.js";
 
 const productRoutes = express.Router();

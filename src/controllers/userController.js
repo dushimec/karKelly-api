@@ -126,8 +126,8 @@ export const updateProfilePicController = async (req, res) => {
 
 export const passwordResetController = async (req, res) => {
   try {
-    const { email, newPassword, answer } = req.body;
-    await userService.resetUserPassword(email, newPassword, answer);
+    const { email, newPassword } = req.body;
+    await userService.resetUserPassword(email, newPassword);
     res.status(200).send({
       success: true,
       message: "Your Password Has Been Reset Please Login !",
