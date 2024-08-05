@@ -5,8 +5,8 @@ import 'dotenv/config';
 import { errorHandler, notFound } from './src/helpers/error-handler';
 import requestRateLimitConfig from './src/config/rateLimit';
 import { DBconnection } from './src/config/dbConnection';
-import i18next from './src/i18n';
-import i18nextMiddleware from 'i18next-http-middleware';
+// import i18next from './src/i18n';
+// import i18nextMiddleware from 'i18next-http-middleware';
 import cloudinary from 'cloudinary';
 import usersRoutes from './src/routes/userRoutes';
 import productRoutes from './src/routes/productRoutes';
@@ -26,7 +26,7 @@ app.use(express.json());
 app.use(morgan('tiny'));
 app.use(requestRateLimitConfig)
 app.use(cookieParser())
-app.use(i18nextMiddleware.handle(i18next));
+
 
 
 
