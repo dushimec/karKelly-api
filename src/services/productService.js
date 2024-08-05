@@ -1,6 +1,7 @@
 import productModel from "../models/productModel.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
+import { getCategoryByName } from "./categoryService.js";
 
 export const getAllProducts = async (filter) => {
   try {
@@ -146,4 +147,19 @@ export const addProductReview = async (productId, reviewData, user) => {
 
   await product.save();
   return product;
+};
+
+export const getProductsByCategoryName = async (categoryName) => {
+  try {
+    
+    const category = await getCategoryByName(categoryName);
+
+    if (!category) {
+      throw new Error('Category not found');
+    }
+    const products = await productModel.find({ category: category._id }).populate('category');
+    return products;
+  } catch (error) {
+    throw new Error('Error fetching products by category name: ' + error.message);
+  }
 };

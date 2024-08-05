@@ -55,3 +55,4 @@ export const updateCategory = async (id, updatedCategory) => {
   await category.save();
   return category;
 };
+

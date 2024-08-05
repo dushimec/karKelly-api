@@ -1,26 +1,19 @@
 import { getCategoryByName } from '../services/categoryService.js';
 import * as productService from '../services/productService.js';
 
+// Add logging in controller
 export const getAllProductsController = async (req, res) => {
   try {
     const { category } = req.query;
-    let filter = {};
+    console.log('Category:', category); 
+    let products;
 
     if (category) {
-      const categoryData = await getCategoryByName(category);
-
-      if (categoryData) {
-        filter.category = categoryData._id;
-      } else {
-        return res.status(404).send({
-          success: false,
-          message: 'Category not found',
-        });
-      }
+      products = await productService.getProductsByCategoryName(category);
+    } else {
+      products = await productService.getAllProducts({});
     }
 
-    const products = await productService.getAllProducts(filter);
-    
     res.status(200).send({
       success: true,
       message: 'All products fetched successfully',
@@ -36,6 +29,7 @@ export const getAllProductsController = async (req, res) => {
     });
   }
 };
+
 
 export const getTopProductsController = async (req, res) => {
   try {
