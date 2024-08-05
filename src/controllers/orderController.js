@@ -121,3 +121,76 @@ export const changeOrderStatusController = async (req, res) => {
     });
   }
 };
+
+export const getTotalSalesController = async (req, res) => {
+  try {
+    const totalSales = await orderService.getTotalSales();
+    res.status(200).send({
+      success: true,
+      message: "Total sales fetched successfully",
+      totalSales,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error fetching total sales",
+      error,
+    });
+  }
+};
+
+export const getTotalOrdersController = async (req, res) => {
+  try {
+    const totalOrders = await orderService.getTotalOrders();
+    res.status(200).send({
+      success: true,
+      message: "Total orders fetched successfully",
+      totalOrders,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error fetching total orders",
+      error,
+    });
+  }
+};
+
+export const getTotalCustomersController = async (req, res) => {
+  try {
+    const totalCustomers = await orderService.getTotalCustomers();
+    res.status(200).send({
+      success: true,
+      message: "Total customers fetched successfully",
+      totalCustomers,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error fetching total customers",
+      error,
+    });
+  }
+};
+
+export const getRecentOrdersController = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 5; 
+    const recentOrders = await orderService.getRecentOrders(limit);
+    res.status(200).send({
+      success: true,
+      message: "Recent orders fetched successfully",
+      recentOrders,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error fetching recent orders",
+      error,
+    });
+  }
+};

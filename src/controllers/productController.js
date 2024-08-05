@@ -1,36 +1,41 @@
+import { getCategoryByName } from '../services/categoryService.js';
 import * as productService from '../services/productService.js';
 
-
 export const getAllProductsController = async (req, res) => {
-  const { category } = req.query;
-  console.log('Category received:', category);
   try {
-    const products = await productService.getAllProducts(category);
-    console.log('Products found:', products);
-    if (products.length === 0) {
-      return res.status(200).send({
-        success: true,
-        message: "No products found for the specified category",
-        totalProducts: 0,
-        products: [],
-      });
+    const { category } = req.query;
+    let filter = {};
+
+    if (category) {
+      const categoryData = await getCategoryByName(category);
+
+      if (categoryData) {
+        filter.category = categoryData._id;
+      } else {
+        return res.status(404).send({
+          success: false,
+          message: 'Category not found',
+        });
+      }
     }
+
+    const products = await productService.getAllProducts(filter);
+    
     res.status(200).send({
       success: true,
-      message: "All products fetched successfully",
+      message: 'All products fetched successfully',
       totalProducts: products.length,
       products,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
-      message: "Error In Get All Products API",
-      error,
+      message: 'Error in fetching products',
+      error: error.message,
     });
   }
 };
-
 
 export const getTopProductsController = async (req, res) => {
   try {

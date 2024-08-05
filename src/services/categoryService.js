@@ -8,6 +8,15 @@ export const createCategory = async (category) => {
   return await categoryModel.create({ category });
 };
 
+export const getCategoryByName = async (categoryName) => {
+  try {
+    const category = await categoryModel.findOne({ category: categoryName });
+    return category;
+  } catch (error) {
+    throw new Error('Error fetching category: ' + error.message);
+  }
+};
+
 export const getAllCategories = async () => {
   return await categoryModel.find({});
 };

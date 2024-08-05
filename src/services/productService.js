@@ -1,22 +1,14 @@
 import productModel from "../models/productModel.js";
-import categoryModel from "../models/categoryModel.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
 
-export const getAllProducts = async (category) => {
-  let filter = {};
-  if (category) {
-    const categoryDoc = await categoryModel.findOne({ name: { $regex: new RegExp(category, "i") } });
-    if (categoryDoc) {
-      filter.categoryModel = categoryDoc._id;
-    } else {
-      filter.categoryModel = null; // If no matching category is found, set filter to null
-    }
+export const getAllProducts = async (filter) => {
+  try {
+    const products = await productModel.find(filter).populate('category');
+    return products;
+  } catch (error) {
+    throw new Error('Error fetching products: ' + error.message);
   }
-  console.log('Final filter applied:', JSON.stringify(filter)); // Log the final filter
-  const products = await productModel.find(filter).populate("category");
-  console.log('Products fetched from DB:', JSON.stringify(products)); // Log the products fetched
-  return products;
 };
 
 export const getTopProducts = async () => {
@@ -24,7 +16,7 @@ export const getTopProducts = async () => {
 };
 
 export const getSingleProduct = async (id) => {
-  return await productModel.findById(id);
+  return await productModel.findById(id).populate("category");
 };
 
 export const createProduct = async (productData, file) => {
