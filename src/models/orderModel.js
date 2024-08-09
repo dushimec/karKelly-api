@@ -39,7 +39,7 @@ const orderSchema = new mongoose.Schema(
     ],
     paymentMethod: {
       type: String,
-      enum: ["MTN MOMO", "CARD"],
+      enum: ["MTN", "CARD"],
       default: "MTN",
     },
     user: {

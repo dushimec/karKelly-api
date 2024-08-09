@@ -22,7 +22,7 @@ export const getAllCategoriesController = async (req, res) => {
     const categories = await categoryService.getAllCategories();
     res.status(200).send({
       success: true,
-      message: req.t("categories_fetched"),
+      message: ("categories_fetched"),
       totalCat: categories.length,
       categories,
     });

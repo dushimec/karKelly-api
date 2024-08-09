@@ -1,29 +1,30 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import JWT from "jsonwebtoken";
+
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "name is required"],
+      required: [true, "Name is required"],
     },
     email: {
       type: String,
-      required: [true, "email is required"],
-      unique: [true, "email already taken"],
+      required: [true, "Email is required"],
+      unique: [true, "Email already taken"],
     },
     password: {
       type: String,
-      required: [true, "password is required"],
-      minLength: [6, "password length should be greadter then 6 character"],
+      required: [true, "Password is required"],
+      minLength: [6, "Password length should be greater than 6 characters"],
     },
     address: {
       type: String,
-      required: [true, "address is required"],
+      required: [true, "Address is required"],
     },
     phone: {
       type: String,
-      required: [true, "phone no is required"],
+      required: [true, "Phone number is required"],
     },
     profilePic: {
       public_id: {
@@ -33,10 +34,9 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     },
-
-    role: {
-      type: String,
-      default: "user",
+    isAdmin: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
@@ -47,17 +47,15 @@ userSchema.pre("save", async function (next) {
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-
 userSchema.methods.comparePassword = async function (plainPassword) {
   return await bcrypt.compare(plainPassword, this.password);
 };
 
-
 userSchema.methods.generateToken = function () {
-  return JWT.sign({ _id: this._id }, process.env.JWT_SECRET, {
+  return JWT.sign({ _id: this._id, isAdmin: this.isAdmin }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
 };
 
-export const userMdoel = mongoose.model("Users", userSchema);
+const userMdoel = mongoose.model("User", userSchema);
 export default userMdoel;
