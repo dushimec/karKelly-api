@@ -29,7 +29,7 @@ export const getMyOrdersController = async (req, res) => {
     }
     res.status(200).send({
       success: true,
-      message: ("orders_fetched"),
+      message: req.t("orders_fetched"),
       totalOrder: orders.length,
       orders,
     });
