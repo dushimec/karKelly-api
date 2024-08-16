@@ -22,12 +22,7 @@ export const loginController = async (req, res) => {
     const { email, password } = req.body;
     const { user, token } = await userService.loginUser(email, password);
 
-    res.status(200).cookie("token", token, {
-      expires: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), 
-      secure: false, 
-      httpOnly: true, 
-      sameSite: "strict", 
-    }).send({
+    res.status(200).send({
       success: true,
       message: "Login Successfully",
       token,
@@ -126,8 +121,8 @@ export const updateProfilePicController = async (req, res) => {
 
 export const passwordResetController = async (req, res) => {
   try {
-    const { email, newPassword, answer } = req.body;
-    await userService.resetUserPassword(email, newPassword, answer);
+    const { email, newPassword } = req.body;
+    await userService.resetUserPassword(email, newPassword);
     res.status(200).send({
       success: true,
       message: "Your Password Has Been Reset Please Login !",

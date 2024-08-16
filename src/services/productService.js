@@ -1,23 +1,33 @@
+import mongoose from 'mongoose'; // Import mongoose
 import productModel from "../models/productModel.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
+import { getCategoryByName } from "./categoryService.js";
 
-export const getAllProducts = async (keyword, category) => {
-  return await productModel.find({
-    name: {
-      $regex: keyword ? keyword : "",
-      $options: "i",
-    },
-    // category: category ? category : null,
-  }).populate("category");
+export const getAllProducts = async (filter) => {
+  try {
+    const products = await productModel.find(filter).populate('category');
+    return products;
+  } catch (error) {
+    throw new Error('Error fetching products: ' + error.message);
+  }
 };
 
 export const getTopProducts = async () => {
   return await productModel.find({}).sort({ rating: -1 }).limit(3);
 };
 
-export const getaSingleProduct = async (id) => {
-  return await productModel.findById(id);
+
+
+ 
+
+export const getSingleProduct = async (id) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
+  return await productModel.findById(id).populate("category");
+
 };
 
 export const createProduct = async (productData, file) => {
@@ -26,7 +36,7 @@ export const createProduct = async (productData, file) => {
   if (!file) {
     throw new Error("Please provide product images");
   }
-  
+
   const dataUri = getDataUri(file);
   const cdb = await cloudinary.v2.uploader.upload(dataUri.content);
   const image = {
@@ -45,6 +55,11 @@ export const createProduct = async (productData, file) => {
 };
 
 export const updateProduct = async (id, productData) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -63,6 +78,11 @@ export const updateProduct = async (id, productData) => {
 };
 
 export const updateProductImage = async (id, file) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -86,6 +106,11 @@ export const updateProductImage = async (id, file) => {
 };
 
 export const deleteProductImage = async (id, imageId) => {
+  // Validate IDs
+  if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(imageId)) {
+    throw new Error("Invalid Product ID or Image ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -108,6 +133,11 @@ export const deleteProductImage = async (id, imageId) => {
 };
 
 export const deleteProduct = async (id) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -123,6 +153,11 @@ export const deleteProduct = async (id) => {
 };
 
 export const addProductReview = async (productId, reviewData, user) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const { comment, rating } = reviewData;
   const product = await productModel.findById(productId);
 
@@ -147,4 +182,18 @@ export const addProductReview = async (productId, reviewData, user) => {
 
   await product.save();
   return product;
+};
+
+export const getProductsByCategoryName = async (categoryName) => {
+  try {
+    const category = await getCategoryByName(categoryName);
+
+    if (!category) {
+      throw new Error('Category not found');
+    }
+    const products = await productModel.find({ category: category._id }).populate('category');
+    return products;
+  } catch (error) {
+    throw new Error('Error fetching products by category name: ' + error.message);
+  }
 };

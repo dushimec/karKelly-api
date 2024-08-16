@@ -6,7 +6,7 @@ export const createCategory = async (req, res) => {
     await categoryService.createCategory(category);
     res.status(201).send({
       success: true,
-      message: `${category} category created successfully`,
+      message: ("category_created"),
     });
   } catch (error) {
     console.log(error);
@@ -22,7 +22,7 @@ export const getAllCategoriesController = async (req, res) => {
     const categories = await categoryService.getAllCategories();
     res.status(200).send({
       success: true,
-      message: "Categories Fetch Successfully",
+      message: ("categories_fetched"),
       totalCat: categories.length,
       categories,
     });
@@ -40,7 +40,7 @@ export const deleteCategoryController = async (req, res) => {
     await categoryService.deleteCategory(req.params.id);
     res.status(200).send({
       success: true,
-      message: "Category Deleted Successfully",
+      message: ("category_deleted")
     });
   } catch (error) {
     console.log(error);
@@ -58,7 +58,7 @@ export const updateCategoryController = async (req, res) => {
     await categoryService.updateCategory(req.params.id, updatedCategory);
     res.status(200).send({
       success: true,
-      message: "Category Updated Successfully",
+      message: ("category_updated"),
     });
   } catch (error) {
     console.log(error);

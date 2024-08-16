@@ -11,10 +11,6 @@ const orderSchema = new mongoose.Schema(
         type: String,
         required: [true, "city name is required"],
       },
-      country: {
-        type: String,
-        required: [true, " country name is require"],
-      },
     },
     orderItems: [
       {
@@ -48,7 +44,7 @@ const orderSchema = new mongoose.Schema(
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Users",
+      ref: "User",
       required: [true, "user id is require"],
     },
     paidAt: Date,
@@ -59,14 +55,6 @@ const orderSchema = new mongoose.Schema(
     itemPrice: {
       type: Number,
       required: [true, "item price is require"],
-    },
-    tax: {
-      type: Number,
-      required: [false, "tax price is require"],
-    },
-    shippingCharges: {
-      type: Number,
-      required: [false, "item shippingCharges  is require"],
     },
     totalAmount: {
       type: Number,

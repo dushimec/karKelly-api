@@ -1,5 +1,6 @@
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
+import userModel from "../models/userModel.js";
 import axios from 'axios';
 
 export const createOrder = async (orderData) => {
@@ -31,11 +32,11 @@ export const createOrder = async (orderData) => {
 };
 
 export const getMyOrders = async (userId) => {
-  return await orderModel.find({ user: userId });
+  return await orderModel.find({ user: userId }).populate('user');
 };
 
 export const getOrderById = async (id) => {
-  return await orderModel.findById(id);
+  return await orderModel.findById(id).populate('user');
 };
 
 export const processPayment = async (totalAmount) => {
@@ -82,7 +83,7 @@ export const processPayment = async (totalAmount) => {
 };
 
 export const getAllOrders = async () => {
-  return await orderModel.find({});
+  return await orderModel.find({}).populate('user');
 };
 
 export const changeOrderStatus = async (id) => {
@@ -102,4 +103,25 @@ export const changeOrderStatus = async (id) => {
 
   await order.save();
   return order;
+};
+
+export const getTotalSales = async () => {
+  const totalSales = await orderModel.aggregate([
+    { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } }
+  ]);
+  return totalSales[0]?.totalSales || 0;
+};
+
+export const getTotalOrders = async () => {
+  const totalOrders = await orderModel.countDocuments();
+  return totalOrders;
+};
+
+export const getTotalCustomers = async () => {
+  const totalCustomers = await userModel.countDocuments();
+  return totalCustomers;
+};
+
+export const getRecentOrders = async (limit = 5) => {
+  return await orderModel.find().sort({ createdAt: -1 }).limit(limit).populate('user');
 };
