@@ -1,5 +1,6 @@
 import express from "express";
-import { isAdmin, isAuth } from "./../middlewares/authMiddleware.js";
+import mongoose from "mongoose"; // Add this import
+import { isAdmin, isAuth } from "../middlewares/authMiddleware.js";
 import {
   createProductController,
   deleteProductController,
@@ -11,7 +12,6 @@ import {
   updateProductController,
   updateProductImageController,
 } from "../controllers/productController.js";
-
 import { singleUpload } from "../middlewares/multer.js";
 
 const productRoutes = express.Router();

@@ -17,7 +17,7 @@ export const isAuth = async (req, res, next) => {
   if (!token) {
     return res.status(401).send({
       success: false,
-      message: "Unauthorized User",
+      message: "No token found",
     });
   }
 

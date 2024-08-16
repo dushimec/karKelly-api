@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'; // Import mongoose
 import productModel from "../models/productModel.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
@@ -17,6 +18,10 @@ export const getTopProducts = async () => {
 };
 
 export const getSingleProduct = async (id) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
   return await productModel.findById(id).populate("category");
 };
 
@@ -45,6 +50,11 @@ export const createProduct = async (productData, file) => {
 };
 
 export const updateProduct = async (id, productData) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -63,6 +73,11 @@ export const updateProduct = async (id, productData) => {
 };
 
 export const updateProductImage = async (id, file) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -86,6 +101,11 @@ export const updateProductImage = async (id, file) => {
 };
 
 export const deleteProductImage = async (id, imageId) => {
+  // Validate IDs
+  if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(imageId)) {
+    throw new Error("Invalid Product ID or Image ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -108,6 +128,11 @@ export const deleteProductImage = async (id, imageId) => {
 };
 
 export const deleteProduct = async (id) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const product = await productModel.findById(id);
 
   if (!product) {
@@ -123,6 +148,11 @@ export const deleteProduct = async (id) => {
 };
 
 export const addProductReview = async (productId, reviewData, user) => {
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new Error("Invalid Product ID");
+  }
+
   const { comment, rating } = reviewData;
   const product = await productModel.findById(productId);
 
@@ -151,7 +181,6 @@ export const addProductReview = async (productId, reviewData, user) => {
 
 export const getProductsByCategoryName = async (categoryName) => {
   try {
-    
     const category = await getCategoryByName(categoryName);
 
     if (!category) {
