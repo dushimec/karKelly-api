@@ -2,10 +2,10 @@ import userModel from "../models/userModel.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
 
-export const registerUser = async (userData) => {
-  const { name, email, password, address,  phone, } = userData;
+export const registerUser = async (userData, file) => {
+  const { name, email, password, address, phone } = userData;
 
-  if (!name || !email || !password || !address || !phone  ) {
+  if (!name || !email || !password || !address || !phone) {
     throw new Error("Please Provide All Fields");
   }
 
@@ -15,13 +15,29 @@ export const registerUser = async (userData) => {
     throw new Error("Email already taken");
   }
 
-  return await userModel.create({
+  
+  // Create user without profilePic initially
+  const user = await userModel.create({
     name,
     email,
     password,
     address,
     phone,
   });
+
+  if (file) {
+    const dataUri = getDataUri(file);
+    const cdb = await cloudinary.v2.uploader.upload(dataUri.content);
+
+    user.profilePic = {
+      public_id: cdb.public_id,
+      url: cdb.secure_url,
+    };
+
+    await user.save();
+  }
+
+  return user;
 };
 
 export const loginUser = async (email, password) => {
@@ -56,16 +72,16 @@ export const logoutUser = () => {
     token: "",
     options: {
       expires: new Date(Date.now()),
-      secure: false, 
-      httpOnly: true, 
+      secure: false,
+      httpOnly: true,
       sameSite: "strict",
-    }
+    },
   };
 };
 
 export const updateUserProfile = async (userId, userData) => {
   const user = await userModel.findById(userId);
-  const { name, email, address,  phone } = userData;
+  const { name, email, address, phone } = userData;
 
   if (name) user.name = name;
   if (email) user.email = email;
@@ -108,8 +124,8 @@ export const updateUserProfilePic = async (userId, file) => {
   await user.save();
 };
 
-export const resetUserPassword = async (email, newPassword, ) => {
-  if (!email || !newPassword ) {
+export const resetUserPassword = async (email, newPassword) => {
+  if (!email || !newPassword) {
     throw new Error("Please Provide All Fields");
   }
 
@@ -121,4 +137,8 @@ export const resetUserPassword = async (email, newPassword, ) => {
 
   user.password = newPassword;
   await user.save();
+};
+
+export const getAllUsers = async () => {
+  return await userModel.find().select("-password"); // Exclude password field
 };
