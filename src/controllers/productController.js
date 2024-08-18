@@ -1,11 +1,8 @@
-import { getCategoryByName } from '../services/categoryService.js';
 import * as productService from '../services/productService.js';
 
-// Add logging in controller
 export const getAllProductsController = async (req, res) => {
   try {
     const { category } = req.query;
-    console.log('Category:', category); 
     let products;
 
     if (category) {
@@ -21,7 +18,6 @@ export const getAllProductsController = async (req, res) => {
       products,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).send({
       success: false,
       message: 'Error in fetching products',
@@ -29,7 +25,6 @@ export const getAllProductsController = async (req, res) => {
     });
   }
 };
-
 
 export const getTopProductsController = async (req, res) => {
   try {
@@ -40,7 +35,6 @@ export const getTopProductsController = async (req, res) => {
       products,
     });
   } catch (error) {
-    console.log(error);
     res.status(500).send({
       success: false,
       message: "Error In Get TOP PRODUCTS API",
@@ -64,11 +58,9 @@ export const getSingleProductController = async (req, res) => {
       product,
     });
   } catch (error) {
-    console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Get single Products API";
     res.status(500).send({
       success: false,
-      message: errorMessage,
+      message: error.message || "Error In Get single Products API",
     });
   }
 };
@@ -77,17 +69,23 @@ export const createProductController = async (req, res) => {
   try {
     const productData = req.body;
     const file = req.file;
+
+    if (!file) {
+      return res.status(400).send({
+        success: false,
+        message: "No image file provided",
+      });
+    }
+
     await productService.createProduct(productData, file);
     res.status(201).send({
       success: true,
       message: "Product created successfully",
     });
   } catch (error) {
-    console.log(error);
     res.status(500).send({
       success: false,
       message: error.message || "Error In Create Product API",
-      error,
     });
   }
 };
@@ -100,28 +98,33 @@ export const updateProductController = async (req, res) => {
       message: "Product details updated",
     });
   } catch (error) {
-    console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Update Product API";
     res.status(500).send({
       success: false,
-      message: errorMessage,
+      message: error.message || "Error In Update Product API",
     });
   }
 };
 
 export const updateProductImageController = async (req, res) => {
   try {
-    await productService.updateProductImage(req.params.id, req.file);
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).send({
+        success: false,
+        message: "No image file provided",
+      });
+    }
+
+    await productService.updateProductImage(req.params.id, file);
     res.status(200).send({
       success: true,
       message: "Product image updated",
     });
   } catch (error) {
-    console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Update Product Image API";
     res.status(500).send({
       success: false,
-      message: errorMessage,
+      message: error.message || "Error In Update Product Image API",
     });
   }
 };
@@ -135,11 +138,9 @@ export const deleteProductImageController = async (req, res) => {
       message: "Product image deleted successfully",
     });
   } catch (error) {
-    console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Delete Product Image API";
     res.status(500).send({
       success: false,
-      message: errorMessage,
+      message: error.message || "Error In Delete Product Image API",
     });
   }
 };
@@ -152,11 +153,9 @@ export const deleteProductController = async (req, res) => {
       message: "Product deleted successfully",
     });
   } catch (error) {
-    console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Delete Product API";
     res.status(500).send({
       success: false,
-      message: errorMessage,
+      message: error.message || "Error In Delete Product API",
     });
   }
 };
@@ -169,11 +168,9 @@ export const productReviewController = async (req, res) => {
       message: "Review added",
     });
   } catch (error) {
-    console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Review API";
     res.status(500).send({
       success: false,
-      message: errorMessage,
+      message: error.message || "Error In Review API",
     });
   }
 };

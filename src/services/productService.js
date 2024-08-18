@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'; // Import mongoose
+import mongoose from 'mongoose'; 
 import productModel from "../models/productModel.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
@@ -18,7 +18,6 @@ export const getTopProducts = async () => {
 };
 
 export const getSingleProduct = async (id) => {
-  // Validate ID
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new Error("Invalid Product ID");
   }
@@ -29,7 +28,7 @@ export const createProduct = async (productData, file) => {
   const { name, description, price, category, stock } = productData;
 
   if (!file) {
-    throw new Error("Please provide product images");
+    throw new Error("Please provide a product image");
   }
 
   const dataUri = getDataUri(file);
@@ -50,7 +49,6 @@ export const createProduct = async (productData, file) => {
 };
 
 export const updateProduct = async (id, productData) => {
-  // Validate ID
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new Error("Invalid Product ID");
   }
@@ -73,7 +71,6 @@ export const updateProduct = async (id, productData) => {
 };
 
 export const updateProductImage = async (id, file) => {
-  // Validate ID
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new Error("Invalid Product ID");
   }
@@ -101,7 +98,6 @@ export const updateProductImage = async (id, file) => {
 };
 
 export const deleteProductImage = async (id, imageId) => {
-  // Validate IDs
   if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(imageId)) {
     throw new Error("Invalid Product ID or Image ID");
   }
@@ -112,23 +108,19 @@ export const deleteProductImage = async (id, imageId) => {
     throw new Error("Product not found");
   }
 
-  let isExist = -1;
-  product.images.forEach((item, index) => {
-    if (item._id.toString() === imageId.toString()) isExist = index;
-  });
+  const imageIndex = product.images.findIndex(img => img._id.toString() === imageId.toString());
 
-  if (isExist < 0) {
+  if (imageIndex === -1) {
     throw new Error("Image not found");
   }
 
-  await cloudinary.v2.uploader.destroy(product.images[isExist].public_id);
-  product.images.splice(isExist, 1);
+  await cloudinary.v2.uploader.destroy(product.images[imageIndex].public_id);
+  product.images.splice(imageIndex, 1);
   await product.save();
   return product;
 };
 
 export const deleteProduct = async (id) => {
-  // Validate ID
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new Error("Invalid Product ID");
   }
@@ -139,16 +131,15 @@ export const deleteProduct = async (id) => {
     throw new Error("Product not found");
   }
 
-  for (let index = 0; index < product.images.length; index++) {
-    await cloudinary.v2.uploader.destroy(product.images[index].public_id);
+  for (const image of product.images) {
+    await cloudinary.v2.uploader.destroy(image.public_id);
   }
-  
+
   await product.deleteOne();
   return product;
 };
 
 export const addProductReview = async (productId, reviewData, user) => {
-  // Validate ID
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     throw new Error("Invalid Product ID");
   }
@@ -156,12 +147,17 @@ export const addProductReview = async (productId, reviewData, user) => {
   const { comment, rating } = reviewData;
   const product = await productModel.findById(productId);
 
-  const alreadyReviewed = product.reviews.find(
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  const alreadyReviewed = product.reviews.some(
     (r) => r.user.toString() === user._id.toString()
   );
   if (alreadyReviewed) {
     throw new Error("Product already reviewed");
   }
+  
   const review = {
     name: user.name,
     rating: Number(rating),
@@ -186,8 +182,7 @@ export const getProductsByCategoryName = async (categoryName) => {
     if (!category) {
       throw new Error('Category not found');
     }
-    const products = await productModel.find({ category: category._id }).populate('category');
-    return products;
+    return await productModel.find({ category: category._id }).populate('category');
   } catch (error) {
     throw new Error('Error fetching products by category name: ' + error.message);
   }

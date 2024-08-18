@@ -16,19 +16,19 @@ const orderSchema = new mongoose.Schema(
       {
         name: {
           type: String,
-          required: [true, "product name is require"],
+          required: [true, "product name is required"],
         },
         price: {
           type: Number,
-          required: [true, "product price is require"],
+          required: [true, "product price is required"],
         },
         quantity: {
           type: Number,
-          required: [true, "product quantity is require"],
+          required: [true, "product quantity is required"],
         },
         image: {
           type: String,
-          required: [true, "product image is require"],
+          required: [true, "product image is required"],
         },
         product: {
           type: mongoose.Schema.Types.ObjectId,
@@ -45,7 +45,7 @@ const orderSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "user id is require"],
+      required: [true, "user id is required"],
     },
     paidAt: Date,
     paymentInfo: {
@@ -54,18 +54,20 @@ const orderSchema = new mongoose.Schema(
     },
     itemPrice: {
       type: Number,
-      required: [true, "item price is require"],
+      required: [true, "item price is required"],
     },
     totalAmount: {
       type: Number,
-      required: [false, "item totalAmount price is require"],
+      required: false,
     },
     orderStatus: {
       type: String,
-      enum: ["processing", "shipped", "deliverd"],
+      enum: ["processing", "shipped", "delivered", "canceled"],
       default: "processing",
     },
-    deliverdAt: Date,
+    deliveredAt: Date,  
+    shippedAt: Date,     
+    canceledAt: Date,    
   },
   { timestamps: true }
 );

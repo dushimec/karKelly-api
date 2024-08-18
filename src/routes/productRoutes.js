@@ -1,5 +1,4 @@
 import express from "express";
-import mongoose from "mongoose"; // Add this import
 import { isAdmin, isAuth } from "../middlewares/authMiddleware.js";
 import {
   createProductController,
