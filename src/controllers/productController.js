@@ -1,3 +1,4 @@
+import { sendProductCreationEmail } from '../services/emailService.js';
 import * as productService from '../services/productService.js';
 
 export const getAllProductsController = async (req, res) => {
@@ -77,11 +78,15 @@ export const createProductController = async (req, res) => {
       });
     }
 
-    await productService.createProduct(productData, file);
+    const createdProduct = await productService.createProduct(productData, file);
     res.status(201).send({
       success: true,
       message: "Product created successfully",
     });
+    const productName = createdProduct.name;
+    await sendProductCreationEmail(productName);
+
+
   } catch (error) {
     res.status(500).send({
       success: false,
