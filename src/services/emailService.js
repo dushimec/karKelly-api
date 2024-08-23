@@ -9,6 +9,11 @@ export const sendProductCreationEmail = async (productName) => {
 
     let transporter = nodemailer.createTransport({
       service: 'gmail',
+      port:465,
+      secure:true,
+      logger:true,
+      debug:true,
+      secureConnection:false,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,

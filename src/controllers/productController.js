@@ -88,10 +88,19 @@ export const createProductController = async (req, res) => {
 
 
   } catch (error) {
-    res.status(500).send({
-      success: false,
-      message: error.message || "Error In Create Product API",
-    });
+    console.error('Error in createProductController:', error);
+
+    if (error.http_code === 400 && error.message.includes('Stale request')) {
+      res.status(400).send({
+        success: false,
+        message: "Time synchronization issue. Please ensure your server time is correct.",
+      });
+    } else {
+      res.status(500).send({
+        success: false,
+        message: error.message || "Error In Create Product API",
+      });
+    }
   }
 };
 
