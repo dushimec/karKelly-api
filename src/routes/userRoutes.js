@@ -8,31 +8,21 @@ import {
   udpatePasswordController,
   updateProfileController,
   updateProfilePicController,
+  getAllUsersController
 } from "../controllers/userController.js";
-import { isAuth } from "../middlewares/authMiddleware.js";
+import { isAdmin, isAuth } from "../middlewares/authMiddleware.js";
 import { singleUpload } from "../middlewares/multer.js";
-
-
-
-
 
 const usersRoutes = express.Router();
 
-usersRoutes.post("/register",  registerController);
-
+usersRoutes.post("/register", registerController);
 usersRoutes.post("/login", loginController);
-
 usersRoutes.get("/profile", isAuth, getUserProfileController);
-
 usersRoutes.get("/logout", isAuth, logoutController);
-
 usersRoutes.put("/profile-update", isAuth, updateProfileController);
-
 usersRoutes.put("/update-password", isAuth, udpatePasswordController);
-
 usersRoutes.put("/update-picture", isAuth, singleUpload, updateProfilePicController);
-
 usersRoutes.post("/forget-password", passwordResetController);
-
+usersRoutes.get("/all", isAuth,isAdmin, getAllUsersController); 
 
 export default usersRoutes;

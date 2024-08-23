@@ -1,8 +1,9 @@
 import * as userService from '../services/userService.js';
+import { singleUpload } from '../middlewares/multer.js';
 
-export const registerController = async (req, res) => {
+export const registerController = [singleUpload, async (req, res) => {
   try {
-    const user = await userService.registerUser(req.body);
+    const user = await userService.registerUser(req.body, req.file); 
     res.status(201).send({
       success: true,
       message: "Registration Success, please login",
@@ -15,8 +16,7 @@ export const registerController = async (req, res) => {
       message: error.message || "Error In Register API",
     });
   }
-};
-
+}];
 export const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -31,7 +31,7 @@ export const loginController = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).send({
-      success: "false",
+      success: false,
       message: error.message || "Error In Login API",
     });
   }
@@ -132,6 +132,23 @@ export const passwordResetController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: error.message || "Error In Password Reset API",
+    });
+  }
+};
+
+export const getAllUsersController = async (req, res) => {
+  try {
+    const users = await userService.getAllUsers();
+    res.status(200).send({
+      success: true,
+      message: "Users fetched successfully",
+      users,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: error.message || "Error In Fetching Users API",
     });
   }
 };
