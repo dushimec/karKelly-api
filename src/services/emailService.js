@@ -12,7 +12,7 @@ export const sendProductCreationEmail = async (productName) => {
       port:465,
       secure:true,
       logger:true,
-      debug:true,
+      debug:false,
       secureConnection:false,
       auth: {
         user: process.env.EMAIL_USER,
