@@ -3,13 +3,13 @@ import * as productService from '../services/productService.js';
 
 export const getAllProductsController = async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, sortBy } = req.query;
     let products;
 
     if (category) {
       products = await productService.getProductsByCategoryName(category);
     } else {
-      products = await productService.getAllProducts({});
+      products = await productService.getAllProducts({}, sortBy);
     }
 
     res.status(200).send({
@@ -26,6 +26,7 @@ export const getAllProductsController = async (req, res) => {
     });
   }
 };
+
 
 export const getTopProductsController = async (req, res) => {
   try {
@@ -83,7 +84,9 @@ export const createProductController = async (req, res) => {
       success: true,
       message: "Product created successfully",
     });
+   
     const productName = createdProduct.name;
+
     await sendProductCreationEmail(productName);
 
 

@@ -4,18 +4,24 @@ import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
 import { getCategoryByName } from "./categoryService.js";
 
-export const getAllProducts = async (filter) => {
+export const getAllProducts = async (filter, sortBy = 'name') => {
   try {
-    const products = await productModel.find(filter).populate('category');
+    let sortOption = {};
+
+  
+    if (sortBy === 'newest') {
+      sortOption = { createdAt: -1 }; 
+    } else {
+      sortOption = { name: 1 }; 
+    }
+
+    const products = await productModel.find(filter).populate('category').sort(sortOption);
     return products;
   } catch (error) {
     throw new Error('Error fetching products: ' + error.message);
   }
 };
 
-export const getTopProducts = async () => {
-  return await productModel.find({}).sort({ rating: -1 }).limit(3);
-};
 
 
 

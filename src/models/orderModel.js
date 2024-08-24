@@ -3,32 +3,40 @@ import mongoose from "mongoose";
 const orderSchema = new mongoose.Schema(
   {
     shippingInfo: {
+      country: {
+        type: String,
+        required: [true, "Country is required"],
+      },
       address: {
         type: String,
-        required: [true, "address is required"],
+        required: [true, "Address is required"],
       },
       city: {
         type: String,
-        required: [true, "city name is required"],
+        required: [true, "City name is required"],
       },
+      saveInfo: {
+        type: Boolean,
+        default: false,
+      }
     },
     orderItems: [
       {
         name: {
           type: String,
-          required: [true, "product name is required"],
+          required: [true, "Product name is required"],
         },
         price: {
           type: Number,
-          required: [true, "product price is required"],
+          required: [true, "Product price is required"],
         },
         quantity: {
           type: Number,
-          required: [true, "product quantity is required"],
+          required: [true, "Product quantity is required"],
         },
         image: {
           type: String,
-          required: [true, "product image is required"],
+          required: [true, "Product image is required"],
         },
         product: {
           type: mongoose.Schema.Types.ObjectId,
@@ -39,22 +47,21 @@ const orderSchema = new mongoose.Schema(
     ],
     paymentMethod: {
       type: String,
-      enum: ["MTN MOMO", "CARD"],
+      enum: ["MTN", "CARD"],
       default: "MTN",
+    },
+    paymentInfo: {
+      type: String,
+      required: false,
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "user id is required"],
-    },
-    paidAt: Date,
-    paymentInfo: {
-      id: String,
-      status: String,
+      required: [true, "User ID is required"],
     },
     itemPrice: {
       type: Number,
-      required: [true, "item price is required"],
+      required: [true, "Item price is required"],
     },
     totalAmount: {
       type: Number,
@@ -65,9 +72,9 @@ const orderSchema = new mongoose.Schema(
       enum: ["processing", "shipped", "delivered", "canceled"],
       default: "processing",
     },
-    deliveredAt: Date,  
-    shippedAt: Date,     
-    canceledAt: Date,    
+    deliveredAt: Date,
+    shippedAt: Date,
+    canceledAt: Date,
   },
   { timestamps: true }
 );

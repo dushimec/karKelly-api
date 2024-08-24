@@ -1,7 +1,5 @@
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
-import userModel from "../models/userModel.js";
-import axios from 'axios';
 
 export const createOrder = async (orderData) => {
   const {
@@ -13,6 +11,8 @@ export const createOrder = async (orderData) => {
     user,
   } = orderData;
 
+  const totalAmount = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
   const order = await orderModel.create({
     user,
     shippingInfo,
@@ -20,6 +20,7 @@ export const createOrder = async (orderData) => {
     paymentMethod,
     paymentInfo,
     itemPrice,
+    totalAmount,
   });
 
   for (let i = 0; i < orderItems.length; i++) {
@@ -37,72 +38,6 @@ export const getMyOrders = async (userId) => {
 
 export const getOrderById = async (id) => {
   return await orderModel.findById(id).populate('user');
-};
-
-export const processPayment = async (totalAmount) => {
-  if (!totalAmount) {
-    throw new Error("Total Amount is required");
-  }
-
-  const amountInCents = Number(totalAmount * 100);
-  const apiUser = process.env.MTN_API_USER;
-  const apiKey = process.env.MTN_API_KEY;
-  const subscriptionKey = process.env.MTN_SUBSCRIPTION_KEY;
-  const targetEnvironment = 'sandbox';
-
-  const headers = {
-    'Authorization': `Basic ${Buffer.from(`${apiUser}:${apiKey}`).toString('base64')}`,
-    'Ocp-Apim-Subscription-Key': subscriptionKey,
-    'X-Target-Environment': targetEnvironment,
-    'Content-Type': 'application/json',
-  };
-
-  const paymentData = {
-    amount: amountInCents.toString(),
-    currency: 'RWF',
-    externalId: '123456789',
-    payer: {
-      partyIdType: 'MSISDN',
-      partyId: '250XXXXXXX',
-    },
-    payerMessage: 'Payment for services',
-    payeeNote: 'Thank you for your payment',
-  };
-
-  const response = await axios.post(
-    'https://sandbox.mtn.com/collection/v1_0/requesttopay',
-    paymentData,
-    { headers }
-  );
-
-  if (response.status !== 202) {
-    throw new Error('Failed to initiate payment');
-  }
-
-  return response.data;
-};
-
-export const getAllOrders = async () => {
-  return await orderModel.find({}).populate('user');
-};
-
-export const changeOrderStatus = async (id) => {
-  const order = await orderModel.findById(id);
-  if (!order) {
-    throw new Error("Order not found");
-  }
-
-  if (order.orderStatus === "processing") {
-    order.orderStatus = "shipped";
-  } else if (order.orderStatus === "shipped") {
-    order.orderStatus = "delivered";
-    order.deliveredAt = Date.now();
-  } else {
-    throw new Error("Order already delivered");
-  }
-
-  await order.save();
-  return order;
 };
 
 export const getTotalSales = async () => {

@@ -3,16 +3,17 @@ import * as orderService from '../services/orderService.js';
 export const createOrderController = async (req, res) => {
   try {
     const orderData = { ...req.body, user: req.user._id };
-    await orderService.createOrder(orderData);
+    const order = await orderService.createOrder(orderData);
     res.status(201).send({
       success: true,
-      message: req.t("order_placed")
+      message: "Order placed successfully",
+      order
     });
   } catch (error) {
     console.log(error);
     res.status(500).send({
       success: false,
-      message: error.message || "Error In Create Order API",
+      message: error.message || "Error in Create Order API",
       error,
     });
   }
@@ -29,7 +30,7 @@ export const getMyOrdersController = async (req, res) => {
     }
     res.status(200).send({
       success: true,
-      message: "orders_fetched",
+      message: "Orders fetched successfully",
       totalOrder: orders.length,
       orders,
     });
@@ -37,7 +38,7 @@ export const getMyOrdersController = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      message: "Error In My Orders API",
+      message: "Error in My Orders API",
       error,
     });
   }
@@ -54,34 +55,15 @@ export const singleOrderDetailsController = async (req, res) => {
     }
     res.status(200).send({
       success: true,
-      message: "order_fetched",
+      message: "Order fetched successfully",
       order,
     });
   } catch (error) {
     console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Get Order Details API";
+    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error in Get Order Details API";
     res.status(500).send({
       success: false,
       message: errorMessage,
-    });
-  }
-};
-
-export const paymentsController = async (req, res) => {
-  try {
-    const { totalAmount } = req.body;
-    const paymentData = await orderService.processPayment(totalAmount);
-    res.status(200).send({
-      success: true,
-      message: "payment_processed",
-      data: paymentData,
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).send({
-      success: false,
-      message: error.message || 'Error processing payment',
-      error,
     });
   }
 };
@@ -91,7 +73,7 @@ export const getAllOrdersController = async (req, res) => {
     const orders = await orderService.getAllOrders();
     res.status(200).send({
       success: true,
-      message: "All Orders Data",
+      message: "All orders fetched successfully",
       totalOrders: orders.length,
       orders,
     });
@@ -99,11 +81,12 @@ export const getAllOrdersController = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      message: "Error In Get All Orders API",
+      message: "Error in Get All Orders API",
       error,
     });
   }
 };
+
 export const changeOrderStatusController = async (req, res) => {
   try {
     const order = await orderService.getOrderById(req.params.id);
@@ -126,12 +109,10 @@ export const changeOrderStatusController = async (req, res) => {
     res.status(200).send({ success: true, message: `Order status updated to ${status}` });
   } catch (error) {
     console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error In Change Order Status API";
+    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error in Change Order Status API";
     res.status(500).send({ success: false, message: errorMessage });
   }
 };
-
-
 
 export const getTotalSalesController = async (req, res) => {
   try {
@@ -189,8 +170,7 @@ export const getTotalCustomersController = async (req, res) => {
 
 export const getRecentOrdersController = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit, 10) || 5; 
-    const recentOrders = await orderService.getRecentOrders(limit);
+    const recentOrders = await orderService.getRecentOrders();
     res.status(200).send({
       success: true,
       message: "Recent orders fetched successfully",
