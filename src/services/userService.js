@@ -15,30 +15,32 @@ export const registerUser = async (userData, file) => {
     throw new Error("Email already taken");
   }
 
+
+  const dataUri = getDataUri(file);
+  const cdb = await cloudinary.v2.uploader.upload(dataUri.content);
+  const image = {
+    public_id: cdb.public_id,
+    url: cdb.secure_url,
+  };
   
-  // Create user without profilePic initially
+
   const user = await userModel.create({
     name,
     email,
     password,
     address,
     phone,
+    profilePic: [image]
   });
 
-  if (file) {
-    const dataUri = getDataUri(file);
-    const cdb = await cloudinary.v2.uploader.upload(dataUri.content);
-
-    user.profilePic = {
-      public_id: cdb.public_id,
-      url: cdb.secure_url,
-    };
+  
 
     await user.save();
+    return user;
   }
 
-  return user;
-};
+  
+
 
 export const loginUser = async (email, password) => {
   if (!email || !password) {

@@ -26,14 +26,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Phone number is required"],
     },
-    profilePic: {
-      public_id: {
-        type: String,
+    profilePic: [
+      {
+        public_id: String,
+        url: String,
       },
-      url: {
-        type: String,
-      },
-    },
+    ],
     isAdmin: {
       type: Boolean,
       default: false,

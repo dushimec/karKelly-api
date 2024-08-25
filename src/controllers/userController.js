@@ -1,7 +1,7 @@
 import * as userService from '../services/userService.js';
-import { singleUpload } from '../middlewares/multer.js';
 
-export const registerController = [singleUpload, async (req, res) => {
+
+export const registerController = async (req, res) => {
   try {
     const user = await userService.registerUser(req.body, req.file); 
     res.status(201).send({
@@ -16,7 +16,7 @@ export const registerController = [singleUpload, async (req, res) => {
       message: error.message || "Error In Register API",
     });
   }
-}];
+};
 export const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;

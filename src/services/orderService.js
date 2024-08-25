@@ -1,5 +1,6 @@
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
+import userModel from '../models/userModel.js'
 
 export const createOrder = async (orderData) => {
   const {
@@ -55,6 +56,10 @@ export const getTotalOrders = async () => {
 export const getTotalCustomers = async () => {
   const totalCustomers = await userModel.countDocuments();
   return totalCustomers;
+};
+
+export const getAllOrders = async () => {
+  return await orderModel.find().populate('user');
 };
 
 export const getRecentOrders = async (limit = 5) => {

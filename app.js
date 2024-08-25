@@ -17,7 +17,9 @@ const PORT = process.env.PORT;
 
 DBconnection();
 
-app.use(cors());
+app.use(cors({
+  credentials: true,
+}));
 app.options('*', cors());
 app.use(morgan('tiny'));
 app.use(requestRateLimitConfig);

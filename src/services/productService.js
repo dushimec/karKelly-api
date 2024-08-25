@@ -198,3 +198,11 @@ export const getProductsByCategoryName = async (categoryName) => {
     throw new Error('Error fetching products by category name: ' + error.message);
   }
 };
+export const getTopProducts = async () => {
+  try {
+    const products = await productModel.find().sort({ rating: -1 }).limit(5).populate('category');
+    return products;
+  } catch (error) {
+    throw new Error('Error fetching top products: ' + error.message);
+  }
+};
