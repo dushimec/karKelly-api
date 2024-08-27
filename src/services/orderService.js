@@ -62,6 +62,6 @@ export const getAllOrders = async () => {
   return await orderModel.find().populate('user');
 };
 
-export const getRecentOrders = async (limit = 5) => {
+export const getRecentOrders = async (limit = 3) => {
   return await orderModel.find().sort({ createdAt: -1 }).limit(limit).populate('user');
 };
