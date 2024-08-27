@@ -11,6 +11,7 @@ import productRoutes from "./src/routes/productRoutes";
 import categorieRoutes from "./src/routes/categoryRoutes";
 import orderRoute from "./src/routes/orderRoutes";
 import cookieParser from "cookie-parser";
+import timeout from "connect-timeout";
 
 const app = express();
 const PORT = process.env.PORT;
@@ -22,12 +23,18 @@ app.use(
     credentials: true,
   })
 );
+app.use(timeout("10s"));
+app.use(haltOnTimedout);
 app.options("*", cors());
 app.use(morgan("tiny"));
 app.use(requestRateLimitConfig);
 app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+function haltOnTimedout(req, res, next) {
+  if (!req.timedout) next();
+}
 
 cloudinary.v2.config({
   cloud_name: process.env.CLOUD_NAME,
