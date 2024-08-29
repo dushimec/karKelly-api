@@ -1,14 +1,17 @@
-import nodemailer from 'nodemailer';
-import userModel from '../models/userModel';
-import 'dotenv/config';
+import nodemailer from "nodemailer";
+import userModel from "../models/userModel";
+import "dotenv/config";
 
-export const sendProductCreationEmail = async (productName, productImageUrl) => {
+export const sendProductCreationEmail = async (
+  productName,
+  productImageUrl
+) => {
   try {
-    const users = await userModel.find({}, 'email');
-    const emails = users.map(user => user.email);
+    const users = await userModel.find({}, "email");
+    const emails = users.map((user) => user.email);
 
     let transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       port: 465,
       secure: true,
       auth: {
@@ -19,8 +22,8 @@ export const sendProductCreationEmail = async (productName, productImageUrl) => 
 
     let mailOptions = {
       from: process.env.EMAIL_USER,
-      to: emails.join(','),
-      subject: 'New Product Created!',
+      to: emails.join(","),
+      subject: "New Product Created!",
       html: `
       <p>A new product named <strong>${productName}</strong> has been added to our store.</p>
       <img src="${productImageUrl}" alt="${productName}" style="width: 300px; height: auto;"/>
@@ -28,8 +31,8 @@ export const sendProductCreationEmail = async (productName, productImageUrl) => 
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('Emails sent successfully!');
+    console.log("Emails sent successfully!");
   } catch (error) {
-    console.error('Error sending emails:', error);
+    console.error("Error sending emails:", error);
   }
 };

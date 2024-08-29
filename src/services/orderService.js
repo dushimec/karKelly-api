@@ -1,14 +1,34 @@
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
-import userModel from '../models/userModel.js';
+import userModel from "../models/userModel.js";
+import { messaging } from "../config/firebase.js";
 
 const updateProductStock = async (orderItems, increment = false) => {
   for (let i = 0; i < orderItems.length; i++) {
     const product = await productModel.findById(orderItems[i].product);
     if (product) {
-      product.stock += increment ? orderItems[i].quantity : -orderItems[i].quantity;
+      product.stock += increment
+        ? orderItems[i].quantity
+        : -orderItems[i].quantity;
       await product.save();
     }
+  }
+};
+
+const sendNotificationToAdmin = async (order) => {
+  const message = {
+    notification: {
+      title: "New Order Placed",
+      body: `Order #${order._id} has been placed by ${order.user.name}.`,
+    },
+    topic: "admin",
+  };
+
+  try {
+    await messaging.send(message);
+    console.log("Notification sent successfully");
+  } catch (error) {
+    console.error("Error sending notification:", error);
   }
 };
 
@@ -22,7 +42,10 @@ export const createOrder = async (orderData) => {
     user,
   } = orderData;
 
-  const totalAmount = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const totalAmount = orderItems.reduce(
+    (acc, item) => acc + item.price * item.quantity,
+    0
+  );
 
   const order = await orderModel.create({
     user,
@@ -34,23 +57,24 @@ export const createOrder = async (orderData) => {
     totalAmount,
   });
 
-  // Decrease stock for the products in the order
   await updateProductStock(orderItems);
+
+  await sendNotificationToAdmin(order);
 
   return order;
 };
 
 export const getMyOrders = async (userId) => {
-  return await orderModel.find({ user: userId }).populate('user');
+  return await orderModel.find({ user: userId }).populate("user");
 };
 
 export const getOrderById = async (id) => {
-  return await orderModel.findById(id).populate('user');
+  return await orderModel.findById(id).populate("user");
 };
 
 export const getTotalSales = async () => {
   const totalSales = await orderModel.aggregate([
-    { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } }
+    { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } },
   ]);
   return totalSales[0]?.totalSales || 0;
 };
@@ -66,11 +90,15 @@ export const getTotalCustomers = async () => {
 };
 
 export const getAllOrders = async () => {
-  return await orderModel.find().populate('user');
+  return await orderModel.find().populate("user");
 };
 
 export const getRecentOrders = async (limit = 3) => {
-  return await orderModel.find().sort({ createdAt: -1 }).limit(limit).populate('user');
+  return await orderModel
+    .find()
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate("user");
 };
 
 export const updateOrderStatus = async (orderId, status) => {
