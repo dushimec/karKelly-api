@@ -191,3 +191,21 @@ export const productReviewController = async (req, res) => {
     });
   }
 };
+
+export const cancelOrderController = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    await productService.updateProductStock(orderId);
+
+    res.status(200).send({
+      success: true,
+      message: "Order canceled and product stock updated",
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: error.message || "Error canceling order",
+    });
+  }
+};

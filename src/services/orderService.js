@@ -1,6 +1,16 @@
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
-import userModel from '../models/userModel.js'
+import userModel from '../models/userModel.js';
+
+const updateProductStock = async (orderItems, increment = false) => {
+  for (let i = 0; i < orderItems.length; i++) {
+    const product = await productModel.findById(orderItems[i].product);
+    if (product) {
+      product.stock += increment ? orderItems[i].quantity : -orderItems[i].quantity;
+      await product.save();
+    }
+  }
+};
 
 export const createOrder = async (orderData) => {
   const {
@@ -24,11 +34,8 @@ export const createOrder = async (orderData) => {
     totalAmount,
   });
 
-  for (let i = 0; i < orderItems.length; i++) {
-    const product = await productModel.findById(orderItems[i].product);
-    product.stock -= orderItems[i].quantity;
-    await product.save();
-  }
+  // Decrease stock for the products in the order
+  await updateProductStock(orderItems);
 
   return order;
 };
@@ -64,4 +71,24 @@ export const getAllOrders = async () => {
 
 export const getRecentOrders = async (limit = 3) => {
   return await orderModel.find().sort({ createdAt: -1 }).limit(limit).populate('user');
+};
+
+export const updateOrderStatus = async (orderId, status) => {
+  const order = await orderModel.findById(orderId);
+  if (!order) throw new Error("Order not found");
+
+  order.orderStatus = status;
+
+  if (status === "delivered") {
+    order.deliveredAt = Date.now();
+  } else if (status === "canceled") {
+    order.canceledAt = Date.now();
+    // Update product stock if the order is canceled
+    await updateProductStock(order.orderItems, true);
+  } else if (status === "shipped") {
+    order.shippedAt = Date.now();
+  }
+
+  await order.save();
+  return order;
 };

@@ -206,3 +206,29 @@ export const getTopProducts = async () => {
     throw new Error('Error fetching top products: ' + error.message);
   }
 };
+
+
+export const updateProductStock = async (orderId) => {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new Error("Invalid Order ID");
+  }
+
+  const order = await orderModel.findById(orderId).populate("items.product");
+
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  for (const item of order.items) {
+    const product = await productModel.findById(item.product._id);
+
+    if (!product) {
+      throw new Error(`Product with ID ${item.product._id} not found`);
+    }
+
+    product.stock += item.quantity;
+    await product.save();
+  }
+
+  return true;
+};

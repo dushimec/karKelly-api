@@ -89,28 +89,20 @@ export const getAllOrdersController = async (req, res) => {
 
 export const changeOrderStatusController = async (req, res) => {
   try {
-    const order = await orderService.getOrderById(req.params.id);
-    if (!order) {
-      return res.status(404).send({ success: false, message: "Order not found" });
-    }
-
     const { status } = req.body;
-    order.orderStatus = status;
-
-    if (status === "delivered") {
-      order.deliveredAt = Date.now();
-    } else if (status === "canceled") {
-      order.canceledAt = Date.now();
-    } else if (status === "shipped") {
-      order.shippedAt = Date.now();
-    }
-
-    await order.save();
-    res.status(200).send({ success: true, message: `Order status updated to ${status}` });
+    const order = await orderService.updateOrderStatus(req.params.id, status);
+    res.status(200).send({
+      success: true,
+      message: `Order status updated to ${status}`,
+      order,
+    });
   } catch (error) {
     console.log(error);
     const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error in Change Order Status API";
-    res.status(500).send({ success: false, message: errorMessage });
+    res.status(500).send({
+      success: false,
+      message: errorMessage,
+    });
   }
 };
 
