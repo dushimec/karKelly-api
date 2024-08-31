@@ -1,36 +1,35 @@
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
-import { messaging } from "../config/firebase.js";
+import { client } from "../config/twilio.js";
+import "dotenv/config";
 
 const updateProductStock = async (orderItems, increment = false) => {
-  for (let i = 0; i < orderItems.length; i++) {
-    const product = await productModel.findById(orderItems[i].product);
+  for (const item of orderItems) {
+    const product = await productModel.findById(item.product);
     if (product) {
-      product.stock += increment
-        ? orderItems[i].quantity
-        : -orderItems[i].quantity;
+      product.stock += increment ? item.quantity : -item.quantity;
       await product.save();
     }
   }
 };
 
 const sendNotificationToAdmin = async (order) => {
+  await order.populate("user", "name").execPopulate();
   const message = {
-    notification: {
-      title: "New Order Placed",
-      body: `Order #${order._id} has been placed by ${order.user.name}.`,
-    },
-    topic: "admin",
+    body: `New Order Placed: Order #${order._id} has been placed by ${order.user.name}.`,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    to: process.env.ADMIN_PHONE_NUMBER,
   };
 
   try {
-    await messaging.send(message);
-    console.log("Notification sent successfully");
+    const response = await client.messages.create(message);
+    console.log("SMS notification sent successfully", response.sid);
   } catch (error) {
-    console.error("Error sending notification:", error);
+    console.error("Error sending SMS notification:", error.message, error.moreInfo);
   }
 };
+
 
 export const createOrder = async (orderData) => {
   const {
@@ -58,7 +57,6 @@ export const createOrder = async (orderData) => {
   });
 
   await updateProductStock(orderItems);
-
   await sendNotificationToAdmin(order);
 
   return order;
@@ -111,7 +109,6 @@ export const updateOrderStatus = async (orderId, status) => {
     order.deliveredAt = Date.now();
   } else if (status === "canceled") {
     order.canceledAt = Date.now();
-    // Update product stock if the order is canceled
     await updateProductStock(order.orderItems, true);
   } else if (status === "shipped") {
     order.shippedAt = Date.now();
