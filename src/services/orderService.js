@@ -20,11 +20,11 @@ const sendNotificationToAdmin = async (order) => {
     .populate("user", "name")
     .populate("orderItems.product", "name")
     .execPopulate();
-    const productName = order.orderItems
+  const productName = order.orderItems
     .map((item) => item.product.name)
     .join(", ");
   const message = {
-    body: `New Order Placed: Order #${productName} has been placed by ${order.user.name}.`,
+    body: `KARY KELLY RWANDA, Muraho MUSENGIMANA Anysie. Order yatanzwe: Izina ry'igicuruzwa: ${productName} Yatanzwe na ${order.user.name}`,
     from: process.env.TWILIO_PHONE_NUMBER,
     to: process.env.ADMIN_PHONE_NUMBER,
   };
@@ -40,7 +40,6 @@ const sendNotificationToAdmin = async (order) => {
     );
   }
 };
-
 const sendNotificationToUser = async (orders) => {
   await orders
     .populate("user", "name phone")
@@ -51,10 +50,16 @@ const sendNotificationToUser = async (orders) => {
     .map((item) => item.product.name)
     .join(", ");
 
+  const phoneNumber = orders.user.phone;
+  if (!phoneNumber || !phoneNumber.startsWith('+')) {
+    console.error('Invalid phone number:', phoneNumber);
+    return;
+  }
+
   const message = {
     body: `KARY KELLY RWANDA, Mukiriya wacu urakoze gutumiza ${productNames}, mwihutire kwishyura vuba kuko nyuma y'iminsi 2 mutarishyura ibyo mwatumije tuzagihagarika murakoze.`,
     from: process.env.TWILIO_PHONE_NUMBER,
-    to: orders.user.phone,
+    to: phoneNumber,
   };
 
   try {
@@ -68,6 +73,7 @@ const sendNotificationToUser = async (orders) => {
     );
   }
 };
+
 
 const cancelOldProcessingOrders = async () => {
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
