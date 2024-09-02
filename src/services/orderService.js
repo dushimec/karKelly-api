@@ -1,3 +1,4 @@
+import cron from "node-cron";
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
@@ -15,9 +16,15 @@ const updateProductStock = async (orderItems, increment = false) => {
 };
 
 const sendNotificationToAdmin = async (order) => {
-  await order.populate("user", "name").execPopulate();
+  await order
+    .populate("user", "name")
+    .populate("orderItems.product", "name")
+    .execPopulate();
+    const productName = order.orderItems
+    .map((item) => item.product.name)
+    .join(", ");
   const message = {
-    body: `New Order Placed: Order #${order._id} has been placed by ${order.user.name}.`,
+    body: `New Order Placed: Order #${productName} has been placed by ${order.user.name}.`,
     from: process.env.TWILIO_PHONE_NUMBER,
     to: process.env.ADMIN_PHONE_NUMBER,
   };
@@ -26,10 +33,67 @@ const sendNotificationToAdmin = async (order) => {
     const response = await client.messages.create(message);
     console.log("SMS notification sent successfully", response.sid);
   } catch (error) {
-    console.error("Error sending SMS notification:", error.message, error.moreInfo);
+    console.error(
+      "Error sending SMS notification:",
+      error.message,
+      error.moreInfo
+    );
   }
 };
 
+const sendNotificationToUser = async (orders) => {
+  await orders
+    .populate("user", "name phone")
+    .populate("orderItems.product", "name")
+    .execPopulate();
+
+  const productNames = orders.orderItems
+    .map((item) => item.product.name)
+    .join(", ");
+
+  const message = {
+    body: `KARY KELLY RWANDA, Mukiriya wacu urakoze gutumiza ${productNames}, mwihutire kwishyura vuba kuko nyuma y'iminsi 2 mutarishyura ibyo mwatumije tuzagihagarika murakoze.`,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    to: orders.user.phone,
+  };
+
+  try {
+    const response = await client.messages.create(message);
+    console.log("SMS notification sent successfully to user", response.sid);
+  } catch (error) {
+    console.error(
+      "Error sending SMS notification to user:",
+      error.message,
+      error.moreInfo
+    );
+  }
+};
+
+const cancelOldProcessingOrders = async () => {
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+  try {
+    const ordersToCancel = await orderModel.find({
+      orderStatus: "processing",
+      createdAt: { $lt: twoDaysAgo },
+    });
+
+    for (const order of ordersToCancel) {
+      order.orderStatus = "canceled";
+      order.canceledAt = Date.now();
+      await updateProductStock(order.orderItems, true);
+      await order.save();
+      console.log(`Order #${order._id} has been canceled due to inactivity.`);
+    }
+  } catch (error) {
+    console.error("Error canceling old processing orders:", error.message);
+  }
+};
+
+cron.schedule("0 0 * * *", () => {
+  console.log("Running scheduled task to cancel old processing orders...");
+  cancelOldProcessingOrders();
+});
 
 export const createOrder = async (orderData) => {
   const {
@@ -56,64 +120,11 @@ export const createOrder = async (orderData) => {
     totalAmount,
   });
 
-  await updateProductStock(orderItems);
-  await sendNotificationToAdmin(order);
-
-  return order;
-};
-
-export const getMyOrders = async (userId) => {
-  return await orderModel.find({ user: userId }).populate("user");
-};
-
-export const getOrderById = async (id) => {
-  return await orderModel.findById(id).populate("user");
-};
-
-export const getTotalSales = async () => {
-  const totalSales = await orderModel.aggregate([
-    { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } },
+  await Promise.all([
+    updateProductStock(orderItems),
+    sendNotificationToAdmin(order),
+    sendNotificationToUser(order),
   ]);
-  return totalSales[0]?.totalSales || 0;
-};
 
-export const getTotalOrders = async () => {
-  const totalOrders = await orderModel.countDocuments();
-  return totalOrders;
-};
-
-export const getTotalCustomers = async () => {
-  const totalCustomers = await userModel.countDocuments();
-  return totalCustomers;
-};
-
-export const getAllOrders = async () => {
-  return await orderModel.find().populate("user");
-};
-
-export const getRecentOrders = async (limit = 3) => {
-  return await orderModel
-    .find()
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .populate("user");
-};
-
-export const updateOrderStatus = async (orderId, status) => {
-  const order = await orderModel.findById(orderId);
-  if (!order) throw new Error("Order not found");
-
-  order.orderStatus = status;
-
-  if (status === "delivered") {
-    order.deliveredAt = Date.now();
-  } else if (status === "canceled") {
-    order.canceledAt = Date.now();
-    await updateProductStock(order.orderItems, true);
-  } else if (status === "shipped") {
-    order.shippedAt = Date.now();
-  }
-
-  await order.save();
   return order;
 };

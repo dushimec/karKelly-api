@@ -4,6 +4,8 @@ export const createOrderController = async (req, res) => {
   try {
     const orderData = { ...req.body, user: req.user._id };
     const order = await orderService.createOrder(orderData);
+
+    // Send response only after all operations are completed
     res.status(201).send({
       success: true,
       message: "Order placed successfully",
@@ -11,11 +13,14 @@ export const createOrderController = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
-      success: false,
-      message: error.message || "Error in Create Order API",
-      error,
-    });
+    // Ensure response is sent only once
+    if (!res.headersSent) {
+      res.status(500).send({
+        success: false,
+        message: error.message || "Error in Create Order API",
+        error,
+      });
+    }
   }
 };
 
