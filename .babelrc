@@ -1,18 +1,17 @@
 {
-    "presets": [
-      [
-        "@babel/preset-env",
-        {
-          "targets": {
-            "node": "20.10.0"
-          }
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "node": "20.10.0"
         }
-      ]
-    ],
-    "plugins": [],
-    "env": {
-      "test": {
-        "presets": ["@babel/preset-env"]
       }
+    ]
+  ],
+  "env": {
+    "test": {
+      "presets": ["@babel/preset-env"]
     }
   }
+}
