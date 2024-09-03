@@ -1,4 +1,4 @@
-import * as orderService from '../services/orderService.js';
+import * as orderService from "../services/orderService.js";
 
 export const createOrderController = async (req, res) => {
   try {
@@ -9,7 +9,7 @@ export const createOrderController = async (req, res) => {
     res.status(201).send({
       success: true,
       message: "Order placed successfully",
-      order
+      order,
     });
   } catch (error) {
     console.log(error);
@@ -65,7 +65,10 @@ export const singleOrderDetailsController = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error in Get Order Details API";
+    const errorMessage =
+      error.name === "CastError"
+        ? "Invalid Id"
+        : error.message || "Error in Get Order Details API";
     res.status(500).send({
       success: false,
       message: errorMessage,
@@ -103,7 +106,10 @@ export const changeOrderStatusController = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    const errorMessage = error.name === "CastError" ? "Invalid Id" : error.message || "Error in Change Order Status API";
+    const errorMessage =
+      error.name === "CastError"
+        ? "Invalid Id"
+        : error.message || "Error in Change Order Status API";
     res.status(500).send({
       success: false,
       message: errorMessage,

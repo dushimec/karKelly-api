@@ -1,10 +1,104 @@
-import cron from "node-cron";
 import orderModel from "../models/orderModel.js";
-import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
+import productModel from "../models/productModel.js";
 import { client } from "../config/twilio.js";
+import cron from 'node-cron';
 import "dotenv/config";
 
+/**
+ * Get all orders from the database.
+ * @returns {Promise<Array>} List of all orders.
+ */
+export const getAllOrders = async () => {
+  try {
+    // Fetch all orders from the database
+    const orders = await orderModel
+      .find()
+      .populate("user", "name email") // Populate user details
+      .populate("orderItems.product", "name price"); // Populate product details
+    return orders;
+  } catch (error) {
+    console.error("Error fetching all orders:", error.message);
+    throw new Error("Failed to fetch all orders");
+  }
+};
+
+/**
+ * Get total sales amount from all orders.
+ * @returns {Promise<Number>} Total sales amount.
+ */
+export const getTotalSales = async () => {
+  try {
+    const result = await orderModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$totalAmount" },
+        },
+      },
+    ]);
+
+    return result[0]?.totalSales || 0;
+  } catch (error) {
+    console.error("Error calculating total sales:", error.message);
+    throw new Error("Failed to calculate total sales");
+  }
+};
+
+/**
+ * Get total number of orders.
+ * @returns {Promise<Number>} Total number of orders.
+ */
+export const getTotalOrders = async () => {
+  try {
+    const totalOrders = await orderModel.countDocuments();
+    return totalOrders;
+  } catch (error) {
+    console.error("Error fetching total orders:", error.message);
+    throw new Error("Failed to fetch total orders");
+  }
+};
+
+/**
+ * Get total number of customers.
+ * @returns {Promise<Number>} Total number of unique customers.
+ */
+export const getTotalCustomers = async () => {
+  try {
+    const totalCustomers = await userModel.countDocuments();
+    return totalCustomers;
+  } catch (error) {
+    console.error("Error fetching total customers:", error.message);
+    throw new Error("Failed to fetch total customers");
+  }
+};
+
+/**
+ * Get a list of recent orders.
+ * @param {Number} limit - Number of recent orders to fetch.
+ * @returns {Promise<Array>} List of recent orders.
+ */
+export const getRecentOrders = async (limit = 5) => {
+  try {
+    const recentOrders = await orderModel
+      .find()
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("user", "name email")
+      .populate("orderItems.product", "name price");
+
+    return recentOrders;
+  } catch (error) {
+    console.error("Error fetching recent orders:", error.message);
+    throw new Error("Failed to fetch recent orders");
+  }
+};
+
+/**
+ * Update the product stock.
+ * @param {Array} orderItems - List of order items with product and quantity.
+ * @param {Boolean} increment - Whether to increment or decrement the stock.
+ */
 const updateProductStock = async (orderItems, increment = false) => {
   for (const item of orderItems) {
     const product = await productModel.findById(item.product);
@@ -15,6 +109,48 @@ const updateProductStock = async (orderItems, increment = false) => {
   }
 };
 
+/**
+ * Update the status of an order.
+ * @param {String} orderId - ID of the order to update.
+ * @param {String} status - New status to set for the order.
+ * @returns {Promise<Object>} The updated order.
+ */
+export const updateOrderStatus = async (orderId, status) => {
+  try {
+    // Validate status if necessary
+    const validStatuses = ["processing", "shipped", "delivered", "canceled"];
+    if (!validStatuses.includes(status)) {
+      throw new Error("Invalid status provided");
+    }
+
+    // Find the order to be updated
+    const order = await orderModel.findById(orderId)
+      .populate("orderItems.product", "name stock"); // Populate product details for stock update
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    // Update the order status
+    order.orderStatus = status;
+    const updatedOrder = await order.save();
+
+    // If the status is 'canceled', update the product stock
+    if (status === "canceled") {
+      await updateProductStock(order.orderItems, true); // Increment stock by adding quantities
+    }
+
+    return updatedOrder;
+  } catch (error) {
+    console.error("Error updating order status:", error.message);
+    throw new Error("Failed to update order status");
+  }
+};
+
+/**
+ * Send SMS notification to admin.
+ * @param {Object} order - The order for which notification is to be sent.
+ */
 const sendNotificationToAdmin = async (order) => {
   await order
     .populate("user", "name")
@@ -40,17 +176,22 @@ const sendNotificationToAdmin = async (order) => {
     );
   }
 };
-const sendNotificationToUser = async (orders) => {
-  await orders
+
+/**
+ * Send SMS notification to user.
+ * @param {Object} order - The order for which notification is to be sent.
+ */
+const sendNotificationToUser = async (order) => {
+  await order
     .populate("user", "name phone")
     .populate("orderItems.product", "name")
     .execPopulate();
 
-  const productNames = orders.orderItems
+  const productNames = order.orderItems
     .map((item) => item.product.name)
     .join(", ");
 
-  const phoneNumber = orders.user.phone;
+  const phoneNumber = order.user.phone;
   if (!phoneNumber || !phoneNumber.startsWith('+')) {
     console.error('Invalid phone number:', phoneNumber);
     return;
@@ -74,7 +215,9 @@ const sendNotificationToUser = async (orders) => {
   }
 };
 
-
+/**
+ * Cancel old processing orders.
+ */
 const cancelOldProcessingOrders = async () => {
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
@@ -96,11 +239,17 @@ const cancelOldProcessingOrders = async () => {
   }
 };
 
+// Schedule a cron job to cancel old processing orders daily at midnight
 cron.schedule("0 0 * * *", () => {
   console.log("Running scheduled task to cancel old processing orders...");
   cancelOldProcessingOrders();
 });
 
+/**
+ * Create a new order and send notifications.
+ * @param {Object} orderData - The data for the new order.
+ * @returns {Promise<Object>} The created order.
+ */
 export const createOrder = async (orderData) => {
   const {
     shippingInfo,
@@ -127,7 +276,7 @@ export const createOrder = async (orderData) => {
   });
 
   await Promise.all([
-    updateProductStock(orderItems),
+    updateProductStock(orderItems), 
     sendNotificationToAdmin(order),
     sendNotificationToUser(order),
   ]);
