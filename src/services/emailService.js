@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import userModel from "../models/userModel";
+import userModel from "../models/userModel.js";
 import "dotenv/config";
 
 export const sendProductCreationEmail = async (

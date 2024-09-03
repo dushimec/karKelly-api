@@ -1,17 +1,24 @@
+import path from 'path';
+import url from 'url';
+
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
 import "dotenv/config";
-import { errorHandler, notFound } from "./src/helpers/error-handler";
-import requestRateLimitConfig from "./src/config/rateLimit";
-import { DBconnection } from "./src/config/dbConnection";
+import { errorHandler, notFound } from "./src/helpers/error-handler.js";
+import requestRateLimitConfig from "./src/config/rateLimit.js";
+import { DBconnection } from "./src/config/dbConnection.js";
 import cloudinary from "cloudinary";
-import usersRoutes from "./src/routes/userRoutes";
-import productRoutes from "./src/routes/productRoutes";
-import categorieRoutes from "./src/routes/categoryRoutes";
-import orderRoute from "./src/routes/orderRoutes";
+import usersRoutes from "./src/routes/userRoutes.js";
+import productRoutes from "./src/routes/productRoutes.js";
+import categorieRoutes from "./src/routes/categoryRoutes.js";
+import orderRoute from "./src/routes/orderRoutes.js";
 import cookieParser from "cookie-parser";
 import timeout from "connect-timeout";
+
+// Derive __dirname from import.meta.url
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT;
@@ -39,10 +46,10 @@ function haltOnTimedout(req, res, next) {
 cloudinary.v2.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUDINARY_KEY,
-  api_secret: process.env.CLOUDINARY_SCRET,
+  api_secret: process.env.CLOUDINARY_SECRET,
 });
 
-app.use("/public/uploads", express.static(__dirname + "/public/uploads"));
+app.use("/public/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 const api = process.env.API_URL;
 
