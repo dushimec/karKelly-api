@@ -4,6 +4,7 @@ import productModel from "../models/productModel.js";
 import { client } from "../config/twilio.js";
 import cron from 'node-cron';
 import "dotenv/config";
+import { sendReceiptEmail } from "./emailService.js";
 
 /**
  * Get all orders from the database.
@@ -197,43 +198,6 @@ const sendNotificationToAdmin = async (order) => {
   }
 };
 
-/**
- * Send SMS notification to user.
- * @param {Object} order - The order for which notification is to be sent.
- */
-const sendNotificationToUser = async (order) => {
-  await order
-    .populate("user", "name phone")
-    .populate("orderItems.product", "name")
-    .execPopulate();
-
-  const productNames = order.orderItems
-    .map((item) => item.product.name)
-    .join(", ");
-
-  const phoneNumber = order.user.phone;
-  if (!phoneNumber || !phoneNumber.startsWith('+')) {
-    console.error('Invalid phone number:', phoneNumber);
-    return;
-  }
-
-  const message = {
-    body: `KARY KELLY RWANDA, Mukiriya wacu urakoze gutumiza ${productNames}, mwihutire kwishyura vuba kuko nyuma y'iminsi 2 mutarishyura ibyo mwatumije tuzagihagarika murakoze.`,
-    from: process.env.TWILIO_PHONE_NUMBER,
-    to: phoneNumber,
-  };
-
-  try {
-    const response = await client.messages.create(message);
-    console.log("SMS notification sent successfully to user", response.sid);
-  } catch (error) {
-    console.error(
-      "Error sending SMS notification to user:",
-      error.message,
-      error.moreInfo
-    );
-  }
-};
 
 /**
  * Cancel old processing orders.
@@ -298,7 +262,7 @@ export const createOrder = async (orderData) => {
   await Promise.all([
     updateProductStock(orderItems), 
     sendNotificationToAdmin(order),
-    sendNotificationToUser(order),
+    sendReceiptEmail(order), 
   ]);
 
   return order;
