@@ -74,6 +74,26 @@ export const getTotalCustomers = async () => {
 };
 
 /**
+ * Get all orders for a specific user.
+ * @param {String} userId - ID of the user whose orders are to be fetched.
+ * @returns {Promise<Array>} List of orders for the user.
+ */
+export const getMyOrders = async (userId) => {
+  try {
+    // Fetch all orders for the specified user
+    const orders = await orderModel
+      .find({ user: userId })
+      .populate("orderItems.product", "name price") // Populate product details
+      .populate("user", "name email"); // Populate user details
+
+    return orders;
+  } catch (error) {
+    console.error("Error fetching user orders:", error.message);
+    throw new Error("Failed to fetch user orders");
+  }
+};
+
+/**
  * Get a list of recent orders.
  * @param {Number} limit - Number of recent orders to fetch.
  * @returns {Promise<Array>} List of recent orders.
