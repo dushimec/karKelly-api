@@ -51,8 +51,11 @@ cloudinary.v2.config({
 
 app.use("/public/uploads", express.static(path.join(__dirname, "public/uploads")));
 
-const api = process.env.API_URL;
 
+const api = process.env.API_URL;
+app.get("/",(req,res)=>{
+  res.send("Server is runing")
+})
 app.use(`${api}/users`, usersRoutes);
 app.use(`${api}/products`, productRoutes);
 app.use(`${api}/category`, categorieRoutes);
@@ -61,9 +64,7 @@ app.use(`${api}/orders`, orderRoute);
 app.use(notFound);
 app.use(errorHandler);
 
-app.get("/",(req,res)=>{
-  res.send("Server is runing")
-})
+
 
 app.listen(PORT, () => {
   console.log(
