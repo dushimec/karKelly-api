@@ -132,34 +132,36 @@ const updateProductStock = async (orderItems, increment = false) => {
 
 /**
  * Update the status of an order.
- * @param {String} orderId - ID of the order to update.
- * @param {String} status - New status to set for the order.
- * @returns {Promise<Object>} The updated order.
+ * @param {String} orderId 
+ * @param {String} status 
+ * @returns {Promise<Object>}
  */
 export const updateOrderStatus = async (orderId, status) => {
   try {
-    // Validate status if necessary
     const validStatuses = ["processing", "shipped", "delivered", "canceled"];
     if (!validStatuses.includes(status)) {
       throw new Error("Invalid status provided");
     }
 
-    // Find the order to be updated
     const order = await orderModel.findById(orderId)
-      .populate("orderItems.product", "name stock"); // Populate product details for stock update
+      .populate("orderItems.product", "name stock"); 
 
     if (!order) {
       throw new Error("Order not found");
     }
 
-    // Update the order status
+    if (status === "canceled" && order.orderStatus !== "canceled") {
+      await orderModel.updateOne(
+        { _id: orderId },
+        { $inc: { totalAmount: -order.totalAmount } }
+      );
+
+      await updateProductStock(order.orderItems, true); 
+    }
+
+   
     order.orderStatus = status;
     const updatedOrder = await order.save();
-
-    // If the status is 'canceled', update the product stock
-    if (status === "canceled") {
-      await updateProductStock(order.orderItems, true); // Increment stock by adding quantities
-    }
 
     return updatedOrder;
   } catch (error) {
@@ -167,6 +169,7 @@ export const updateOrderStatus = async (orderId, status) => {
     throw new Error("Failed to update order status");
   }
 };
+
 
 /**
  * Send SMS notification to admin.
@@ -214,8 +217,16 @@ const cancelOldProcessingOrders = async () => {
     for (const order of ordersToCancel) {
       order.orderStatus = "canceled";
       order.canceledAt = Date.now();
+
       await updateProductStock(order.orderItems, true);
+
+      await orderModel.updateOne(
+        { _id: order._id },
+        { $inc: { totalAmount: -order.totalAmount } }
+      );
+
       await order.save();
+
       console.log(`Order #${order._id} has been canceled due to inactivity.`);
     }
   } catch (error) {
@@ -223,11 +234,11 @@ const cancelOldProcessingOrders = async () => {
   }
 };
 
-// Schedule a cron job to cancel old processing orders daily at midnight
 cron.schedule("0 0 * * *", () => {
   console.log("Running scheduled task to cancel old processing orders...");
   cancelOldProcessingOrders();
 });
+
 
 /**
  * Create a new order and send notifications.
