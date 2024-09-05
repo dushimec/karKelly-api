@@ -41,9 +41,13 @@ export const sendReceiptEmail = async (order) => {
   try {
     const user = await userModel.findById(order.user._id);
     const email = user.email;
-    const productDetails = order.orderItems.map(item => `
+    const productDetails = order.orderItems
+      .map(
+        (item) => `
       <p>${item.product.name} - Quantity: ${item.quantity} - Price: ${item.price}</p>
-    `).join("");
+    `
+      )
+      .join("");
 
     const orderDateTime = new Date(order.createdAt).toLocaleString();
 
@@ -68,7 +72,7 @@ export const sendReceiptEmail = async (order) => {
         <h3>Ibicuruzwa:</h3>
         ${productDetails}
        <p>Turabashimira kubwo ku tugurira kandi turifuza ko mwishimira ibyo mwaguze!,</p>
-       <p>Ikitonderwa mwihutire kwishyura kuko order imaze iminsi 2 itishyuwe duhuta tuyihagarika, Murakoze.</p>
+       <p>Ikitonderwa mwihutire kwishyura kuko order imaze iminsi 2 itishyuwe duhita tuyihagarika, Murakoze.</p>
       `,
     };
 
