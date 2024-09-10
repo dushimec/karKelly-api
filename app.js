@@ -1,5 +1,5 @@
-import path from "path";
-import url from "url";
+import path from 'path';
+import url from 'url';
 
 import express from "express";
 import morgan from "morgan";
@@ -27,8 +27,6 @@ DBconnection();
 
 app.use(
   cors({
-    origin: "https://karkelly.netlify.app/",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
@@ -51,15 +49,13 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-app.use(
-  "/public/uploads",
-  express.static(path.join(__dirname, "public/uploads"))
-);
+app.use("/public/uploads", express.static(path.join(__dirname, "public/uploads")));
+
 
 const api = process.env.API_URL;
-app.get("/", (req, res) => {
-  res.send("Server is runing");
-});
+app.get("/",(req,res)=>{
+  res.send("Server is runing")
+})
 app.use(`${api}/users`, usersRoutes);
 app.use(`${api}/products`, productRoutes);
 app.use(`${api}/category`, categorieRoutes);
@@ -67,6 +63,8 @@ app.use(`${api}/orders`, orderRoute);
 
 app.use(notFound);
 app.use(errorHandler);
+
+
 
 app.listen(PORT, () => {
   console.log(
