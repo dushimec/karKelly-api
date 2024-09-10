@@ -2,7 +2,7 @@ import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import productModel from "../models/productModel.js";
 import { client } from "../config/twilio.js";
-import cron from 'node-cron';
+import cron from "node-cron";
 import "dotenv/config";
 import { sendReceiptEmail } from "./emailService.js";
 
@@ -132,8 +132,8 @@ const updateProductStock = async (orderItems, increment = false) => {
 
 /**
  * Update the status of an order.
- * @param {String} orderId 
- * @param {String} status 
+ * @param {String} orderId
+ * @param {String} status
  * @returns {Promise<Object>}
  */
 export const updateOrderStatus = async (orderId, status) => {
@@ -143,8 +143,9 @@ export const updateOrderStatus = async (orderId, status) => {
       throw new Error("Invalid status provided");
     }
 
-    const order = await orderModel.findById(orderId)
-      .populate("orderItems.product", "name stock"); 
+    const order = await orderModel
+      .findById(orderId)
+      .populate("orderItems.product", "name stock");
 
     if (!order) {
       throw new Error("Order not found");
@@ -156,10 +157,9 @@ export const updateOrderStatus = async (orderId, status) => {
         { $inc: { totalAmount: -order.totalAmount } }
       );
 
-      await updateProductStock(order.orderItems, true); 
+      await updateProductStock(order.orderItems, true);
     }
 
-   
     order.orderStatus = status;
     const updatedOrder = await order.save();
 
@@ -169,7 +169,6 @@ export const updateOrderStatus = async (orderId, status) => {
     throw new Error("Failed to update order status");
   }
 };
-
 
 /**
  * Send SMS notification to admin.
@@ -201,32 +200,33 @@ const sendNotificationToAdmin = async (order) => {
   }
 };
 
-
 /**
  * Cancel old processing orders.
  */
 const cancelOldProcessingOrders = async () => {
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-
   try {
+    console.log("Finding processing orders older than two days...");
     const ordersToCancel = await orderModel.find({
       orderStatus: "processing",
       createdAt: { $lt: twoDaysAgo },
     });
 
+    console.log(`Found ${ordersToCancel.length} orders to cancel.`);
+    if (ordersToCancel.length === 0) {
+      console.log("No orders to cancel.");
+      return;
+    }
+
     for (const order of ordersToCancel) {
       order.orderStatus = "canceled";
       order.canceledAt = Date.now();
-
       await updateProductStock(order.orderItems, true);
-
       await orderModel.updateOne(
         { _id: order._id },
         { $inc: { totalAmount: -order.totalAmount } }
       );
-
       await order.save();
-
       console.log(`Order #${order._id} has been canceled due to inactivity.`);
     }
   } catch (error) {
@@ -234,11 +234,14 @@ const cancelOldProcessingOrders = async () => {
   }
 };
 
+(async () => {
+  await cancelOldProcessingOrders();
+})();
+
 cron.schedule("0 0 * * *", () => {
   console.log("Running scheduled task to cancel old processing orders...");
   cancelOldProcessingOrders();
 });
-
 
 /**
  * Create a new order and send notifications.
@@ -271,9 +274,9 @@ export const createOrder = async (orderData) => {
   });
 
   await Promise.all([
-    updateProductStock(orderItems), 
+    updateProductStock(orderItems),
     sendNotificationToAdmin(order),
-    sendReceiptEmail(order), 
+    sendReceiptEmail(order),
   ]);
 
   return order;
