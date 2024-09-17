@@ -152,3 +152,23 @@ export const getAllUsersController = async (req, res) => {
     });
   }
 };
+
+
+export const verifyEmailController = async (req, res) => {
+  const { token } = req.query;
+
+  try {
+    await userService.verifyEmail(token);
+
+    res.status(200).send({
+      success: true,
+      message: "Email verified successfully. Please log in.",
+    });
+  } catch (error) {
+    console.log(error.message); 
+    res.status(400).send({
+      success: false,
+      message: error.message || "Error in Email Verification API",
+    });
+  }
+};

@@ -2,6 +2,10 @@ import userModel from "../models/userModel.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
 
+import crypto from "crypto";
+import nodemailer from "nodemailer";
+
+
 export const registerUser = async (userData, file) => {
   const { name, email, password, address, phone } = userData;
 
@@ -22,6 +26,9 @@ export const registerUser = async (userData, file) => {
     url: cdb.secure_url,
   };
 
+  
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+
   const user = await userModel.create({
     name,
     email,
@@ -29,11 +36,39 @@ export const registerUser = async (userData, file) => {
     address,
     phone,
     profilePic: [image],
+    verificationToken,
   });
 
   await user.save();
+
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+  await sendVerificationEmail(user.email, verificationUrl);
+
   return user;
 };
+
+
+const sendVerificationEmail = async (email, verificationUrl) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Email Verification",
+    html: `<p>Please verify your email by clicking on the link below:</p><a href="${verificationUrl}">Verify Email</a>`,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
 
 export const loginUser = async (email, password) => {
   if (!email || !password) {
@@ -46,6 +81,10 @@ export const loginUser = async (email, password) => {
     throw new Error("User Not Found");
   }
 
+  if (!user.isVerified) {
+    throw new Error("Please verify your email before logging in.");
+  }
+
   const isMatch = await user.comparePassword(password);
 
   if (!isMatch) {
@@ -55,6 +94,7 @@ export const loginUser = async (email, password) => {
   const token = user.generateToken();
   return { user, token };
 };
+
 
 export const getUserProfile = async (userId) => {
   const user = await userModel.findById(userId);
@@ -135,5 +175,29 @@ export const resetUserPassword = async (email, newPassword) => {
 };
 
 export const getAllUsers = async () => {
-  return await userModel.find().select("-password"); // Exclude password field
+  return await userModel.find().select("-password");
+};
+
+export const verifyEmail = async (token) => {
+  if (!token) {
+    throw new Error("Verification token is required.");
+  }
+
+  const user = await userModel.findOne({ verificationToken: token });
+
+  if (!user) {
+    throw new Error("Invalid or expired verification token.");
+  }
+
+  
+  const tokenExpiration = 24 * 60 * 60 * 1000; 
+  if (Date.now() - user.tokenIssuedAt > tokenExpiration) {
+    throw new Error("Verification token has expired.");
+  }
+
+  user.isVerified = true;
+  user.verificationToken = undefined;
+  await user.save();
+
+  return user;
 };

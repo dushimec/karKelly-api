@@ -3,7 +3,7 @@ import 'dotenv/config'
 export const DBconnection = async () =>{
   await mongoose.connect(process.env.MONGO_URL)
     .then(()=>{
-        console.log('Database Connection is ready...')
+        console.log('Database Connection is ready.....')
       
     })
     .catch((err)=> {
