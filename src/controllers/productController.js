@@ -3,20 +3,47 @@ import * as productService from '../services/productService.js';
 
 export const getAllProductsController = async (req, res) => {
   try {
-    const { category, sortBy } = req.query;
+    const { category, sortBy, page = 1, limit = 1000, search = '' } = req.query;
+
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+    };
+
+    let filter = {};
+
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter = {
+        $or: [
+          { name: searchRegex },
+          { description: searchRegex },
+        ],
+      };
+    }
+
     let products;
 
     if (category) {
-      products = await productService.getProductsByCategoryName(category);
+      products = await productService.getProductsByCategoryName(category, sortBy, options);
     } else {
-      products = await productService.getAllProducts({}, sortBy);
+      products = await productService.getAllProducts(filter, sortBy, options);
+    }
+
+    if (!products || !products.docs) {
+      return res.status(404).send({
+        success: false,
+        message: 'No products found',
+      });
     }
 
     res.status(200).send({
       success: true,
       message: 'All products fetched successfully',
-      totalProducts: products.length,
-      products,
+      totalProducts: products.totalDocs,
+      totalPages: products.totalPages,
+      currentPage: products.page,
+      products: products.docs,
     });
   } catch (error) {
     res.status(500).send({
@@ -24,8 +51,10 @@ export const getAllProductsController = async (req, res) => {
       message: 'Error in fetching products',
       error: error.message,
     });
+    console.log(error);
   }
 };
+
 
 
 export const getTopProductsController = async (req, res) => {
