@@ -53,11 +53,11 @@ app.use(
   "/public/uploads",
   express.static(path.join(__dirname, "public/uploads"))
 );
-
-const api = process.env.API_URL;
 app.get("/", (req, res) => {
   res.send("Server is runing");
 });
+const api = process.env.API_URL;
+
 app.use(`${api}/users`, usersRoutes);
 app.use(`${api}/products`, productRoutes);
 app.use(`${api}/category`, categorieRoutes);
