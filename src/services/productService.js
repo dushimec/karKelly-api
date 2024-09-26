@@ -4,28 +4,42 @@ import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
 import { getCategoryByName } from "./categoryService.js";
 
-export const getAllProducts = async (filter, sortBy = 'name') => {
+export const getAllProducts = async (filter, sortBy = 'name', { page = 1, limit = 1000, search = '' } = {}) => {
   try {
     let sortOption = {};
 
-  
     if (sortBy === 'newest') {
-      sortOption = { createdAt: -1 }; 
+      sortOption = { createdAt: -1 };
     } else {
-      sortOption = { name: 1 }; 
+      sortOption = { name: 1 };
     }
 
-    const products = await productModel.find(filter).populate('category').sort(sortOption);
-    return products;
+    // Update filter to include search by product name
+    if (search) {
+      filter.name = { $regex: search, $options: 'i' }; // Case-insensitive search
+    }
+
+    const products = await productModel
+      .find(filter)
+      .populate('category')
+      .sort(sortOption)
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const totalDocs = await productModel.countDocuments(filter);
+
+    return {
+      docs: products,
+      totalDocs,
+      totalPages: Math.ceil(totalDocs / limit),
+      page,
+    };
   } catch (error) {
     throw new Error('Error fetching products: ' + error.message);
   }
 };
 
 
-
-
- 
 
 export const getSingleProduct = async (id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -186,18 +200,22 @@ export const addProductReview = async (productId, reviewData, user) => {
   return product;
 };
 
-export const getProductsByCategoryName = async (categoryName) => {
+export const getProductsByCategoryName = async (categoryName, sortBy, options) => {
   try {
     const category = await getCategoryByName(categoryName);
 
     if (!category) {
       throw new Error('Category not found');
     }
-    return await productModel.find({ category: category._id }).populate('category');
+
+    const categoryFilter = { category: category._id }; 
+    return await getAllProducts(categoryFilter, sortBy, options);
   } catch (error) {
     throw new Error('Error fetching products by category name: ' + error.message);
   }
 };
+
+
 export const getTopProducts = async () => {
   try {
     const products = await productModel.find().sort({ rating: -1 }).limit(3).populate('category');
