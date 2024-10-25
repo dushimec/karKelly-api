@@ -1,6 +1,6 @@
+// app.js
 import path from "path";
 import url from "url";
-
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
@@ -21,15 +21,11 @@ const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8010; // Fallback for local testing
 
 DBconnection();
 
-app.use(
-  cors({
-    credentials: true,
-  })
-);
+app.use(cors({ credentials: true }));
 app.use(timeout("10s"));
 app.use(haltOnTimedout);
 app.options("*", cors());
@@ -49,25 +45,33 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-app.use(
-  "/public/uploads",
-  express.static(path.join(__dirname, "public/uploads"))
-);
+app.use("/public/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.get("/", (req, res) => {
-  res.send("Server is runing");
+  res.send("Server is running");
 });
+
 const api = process.env.API_URL;
 
+// Define your routes
 app.use(`${api}/users`, usersRoutes);
 app.use(`${api}/products`, productRoutes);
 app.use(`${api}/category`, categorieRoutes);
 app.use(`${api}/orders`, orderRoute);
 
+// Error handling
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(
-    `Server is running on port ${PORT} in ${process.env.NODE_ENV} mode`
-  );
-});
+// Export the Express app for use in serverless functions
+export default app;
+
+// For local testing
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  });
+};
+
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}
