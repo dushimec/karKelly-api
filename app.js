@@ -23,7 +23,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 8010; // Fallback for local testing
 
-DBconnection();
+
 
 app.use(cors({ credentials: true }));
 app.use(timeout("10s"));
@@ -64,14 +64,3 @@ app.use(errorHandler);
 
 // Export the Express app for use in serverless functions
 export default app;
-
-// For local testing
-const startServer = () => {
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV} mode`);
-  });
-};
-
-if (process.env.NODE_ENV !== "test") {
-  startServer();
-}

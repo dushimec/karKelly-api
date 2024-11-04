@@ -5,8 +5,8 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "server": "nodemon app.js",
-    "start": "node app.js"
+    "server": "nodemon src/index.js",
+    "start": "node src/index.js"
   },
   "engines": {
     "node": "20.17.0"
