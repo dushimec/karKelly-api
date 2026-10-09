@@ -83,47 +83,90 @@ export const sendProductLaunchEmails = async (product) => {
 };
 
 export const sendReceiptEmail = async (order) => {
-  try {
-    const user = await userModel.findById(order.user._id);
-    const email = user.email;
-    const productDetails = order.orderItems
-      .map(
-        (item) => `
-      <p>${item.product.name} - Quantity: ${item.quantity} - Price: ${item.price}</p>
-    `
-      )
-      .join("");
+  const userId = order.user?._id || order.user;
+  const user = await userModel.findById(userId).select("name email");
+  if (!user?.email) throw new Error("Order customer has no email address");
+  const html = orderEmailHtml(order, user);
+  await createMailer().sendMail({
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: `KarKelly order received - ${order._id}`,
+    html,
+  });
+};
 
-    const orderDateTime = new Date(order.createdAt).toLocaleString();
+const createMailer = () => nodemailer.createTransport({
+  service: "gmail",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+const orderEmailHtml = (order, customer) => {
+  const items = order.orderItems.map((item) => {
+    const imageUrl = trustedHttpsUrl(item.image);
+    const image = imageUrl
+      ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.name)}" width="88" style="width:88px;height:88px;object-fit:cover;border-radius:8px;">`
+      : "";
+    return `
+      <tr>
+        <td style="padding:12px;border-bottom:1px solid #e2e8f0;">${image}</td>
+        <td style="padding:12px;border-bottom:1px solid #e2e8f0;">
+          <strong>${escapeHtml(item.name)}</strong><br>
+          Quantity: ${escapeHtml(item.quantity)}
+        </td>
+        <td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:right;">
+          RWF ${escapeHtml(Number(item.price).toLocaleString("en-RW"))}
+        </td>
+      </tr>`;
+  }).join("");
+  const address = order.shippingInfo || {};
+  const logoUrl = trustedHttpsUrl(process.env.BRAND_LOGO_URL);
+  const logo = logoUrl
+    ? `<img src="${escapeHtml(logoUrl)}" alt="KarKelly" width="140" style="display:block;height:auto;margin:0 auto 20px;">`
+    : `<strong style="display:block;font-size:24px;margin-bottom:20px;">KarKelly</strong>`;
 
-    let mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Inyemeza bwishyu",
-      html: `
-        <h2>Murakoze kuri order yanyu!</h2>
-        <p>Itariki n'igihe cy'itangwa rya order: ${orderDateTime}</p>
-        <p>Total Amount: ${order.totalAmount}</p>
-        <h3>Ibicuruzwa:</h3>
-        ${productDetails}
-       <p>Turabashimira kubwo ku tugurira kandi turifuza ko mwishimira ibyo mwaguze!,</p>
-       <p>Ikitonderwa mwihutire kwishyura kuko order imaze iminsi 2 itishyuwe duhita tuyihagarika, Murakoze.</p>
-      `,
-    };
+  return `
+    <div style="background:#f1f5f9;padding:24px;font-family:Arial,sans-serif;color:#172033;">
+      <div style="max-width:680px;margin:auto;background:#fff;border-radius:12px;padding:24px;">
+        <div style="text-align:center;">${logo}</div>
+        <h1 style="font-size:24px;">Order received</h1>
+        <p>Hello ${escapeHtml(customer.name || "Customer")}, your order has been recorded.</p>
+        <p><strong>Order:</strong> ${escapeHtml(order._id)}<br>
+        <strong>Date:</strong> ${escapeHtml(new Date(order.createdAt).toLocaleString())}<br>
+        <strong>Status:</strong> ${escapeHtml(order.orderStatus || "processing")}<br>
+        <strong>Payment method:</strong> ${escapeHtml(order.paymentMethod || "MTN")}</p>
+        <h2 style="font-size:18px;">Items</h2>
+        <table style="width:100%;border-collapse:collapse;"><tbody>${items}</tbody></table>
+        <p style="text-align:right;font-size:18px;"><strong>Total: RWF ${escapeHtml(Number(order.totalAmount).toLocaleString("en-RW"))}</strong></p>
+        <h2 style="font-size:18px;">Delivery details</h2>
+        <p>${escapeHtml(address.address)}<br>${escapeHtml(address.city)}, ${escapeHtml(address.country)}</p>
+      </div>
+    </div>`;
+};
 
-    await transporter.sendMail(mailOptions);
-    console.log("Receipt email sent successfully!");
-  } catch (error) {
-    console.error("Error sending receipt email:", error);
+export const sendAdminOrderEmail = async (order) => {
+  const recipients = (process.env.ORDER_NOTIFICATION_EMAILS ||
+    "ndayiyasoni@gmail.com,musany89@gmail.com")
+    .split(",")
+    .map((email) => email.trim())
+    .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+  if (!recipients.length) throw new Error("No valid order notification email recipients are configured");
+  const customer = await userModel.findById(order.user?._id || order.user).select("name email phone");
+  const html = orderEmailHtml(order, customer || {});
+  const mailer = createMailer();
+  const deliveries = await Promise.allSettled(recipients.map((email) => mailer.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `New KarKelly order - ${order._id}`,
+    html,
+  })));
+  const failed = deliveries.filter((delivery) => delivery.status === "rejected");
+  if (failed.length) {
+    throw new Error(`Order email failed for ${failed.length} of ${recipients.length} configured recipient(s)`);
   }
+  return recipients.length;
 };

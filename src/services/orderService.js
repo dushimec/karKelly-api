@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import { getTwilioClient } from "../config/twilio.js";
 import cron from "node-cron";
 import "dotenv/config";
-import { sendReceiptEmail } from "./emailService.js";
+import { sendAdminOrderEmail, sendReceiptEmail } from "./emailService.js";
 import { recordPurchasedProductInterests } from "./productInterestService.js";
 
 /**
@@ -197,29 +197,22 @@ export const updateOrderStatus = async (orderId, status) => {
  * @param {Object} order - The order for which notification is to be sent.
  */
 const sendNotificationToAdmin = async (order) => {
-  await order.populate([
-    { path: "user", select: "name" },
-    { path: "orderItems.product", select: "name" },
-  ]);
-  const productName = order.orderItems
-    .map((item) => item.product.name)
-    .join(", ");
+  if (!process.env.TWILIO_PHONE_NUMBER || !process.env.ADMIN_PHONE_NUMBER) {
+    throw new Error("Twilio order SMS requires TWILIO_PHONE_NUMBER and ADMIN_PHONE_NUMBER");
+  }
+  await order.populate({ path: "user", select: "name" });
+  const productSummary = order.orderItems
+    .map((item) => `${item.name} x${item.quantity}`)
+    .join(", ")
+    .slice(0, 700);
   const message = {
-    body: `KARY KELLY RWANDA, Muraho MUSENGIMANA Anysie. Order yatanzwe: Izina ry'igicuruzwa: ${productName} Yatanzwe na ${order.user.name}`,
+    body: `KAR KELLY: New order ${order._id}. Customer: ${order.user?.name || "Customer"}. Items: ${productSummary}. Total: RWF ${Number(order.totalAmount).toLocaleString("en-RW")}.`,
     from: process.env.TWILIO_PHONE_NUMBER,
     to: process.env.ADMIN_PHONE_NUMBER,
   };
 
-  try {
-    const response = await getTwilioClient().messages.create(message);
-    console.log("SMS notification sent successfully", response.sid);
-  } catch (error) {
-    console.error(
-      "Error sending SMS notification:",
-      error.message,
-      error.moreInfo
-    );
-  }
+  const response = await getTwilioClient().messages.create(message);
+  console.log("Order SMS notification sent successfully", response.sid);
 };
 
 /**
@@ -379,7 +372,7 @@ export const createOrder = async (orderData) => {
           name: product.name,
           price: product.price,
           quantity,
-          image: product.images[0]?.url || "",
+          image: product.images[0]?.url || undefined,
         });
       }
 
@@ -406,10 +399,16 @@ export const createOrder = async (orderData) => {
     await session.endSession();
   }
 
-  try {
-    await Promise.all([sendNotificationToAdmin(order), sendReceiptEmail(order)]);
-  } catch (error) {
-    console.error("Order notification delivery failed:", error.message);
-  }
+  const notifications = [
+    ["customer order email", () => sendReceiptEmail(order)],
+    ["admin order email", () => sendAdminOrderEmail(order)],
+    ["admin order SMS", () => sendNotificationToAdmin(order)],
+  ];
+  const results = await Promise.allSettled(notifications.map(([, send]) => send()));
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(`${notifications[index][0]} delivery failed:`, result.reason.message);
+    }
+  });
   return { order, created: true };
 };

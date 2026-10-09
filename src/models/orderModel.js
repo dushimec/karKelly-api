@@ -36,7 +36,7 @@ const orderSchema = new mongoose.Schema(
         },
         image: {
           type: String,
-          required: [true, "Product image is required"],
+          required: false,
         },
         product: {
           type: mongoose.Schema.Types.ObjectId,

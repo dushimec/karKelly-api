@@ -106,6 +106,15 @@ links. Add `productInterests` to existing customer records through normal
 cart-interest calls or successful orders; no migration is required because
 Mongoose defaults the field to an empty array.
 
+For new-order notifications, set `EMAIL_USER` and `EMAIL_PASS`, plus valid
+Twilio `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, and
+`ADMIN_PHONE_NUMBER` values. `ORDER_NOTIFICATION_EMAILS` is a comma-separated
+list of order notification recipients; it defaults to
+`ndayiyasoni@gmail.com,musany89@gmail.com`. Customer receipt and admin order
+emails include saved product images, line items, totals, and order details.
+Email and SMS delivery failures are logged but do not turn a saved order into a
+failed checkout response.
+
 The app uses `MONGO_URL` for MongoDB and the existing Cloudinary settings for
 uploaded images. In `app.js` those settings are named `CLOUDINARY_CLOUD_NAME`,
 `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`. MongoDB transaction support

@@ -15,11 +15,13 @@ export const createOrderController = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error("Error creating order:", error.message);
+    console.error("Error creating order:", error);
     if (!res.headersSent) {
-      return res.status(error.statusCode || 500).send({
+      const statusCode = error.statusCode ||
+        (["ValidationError", "CastError"].includes(error.name) ? 400 : 500);
+      return res.status(statusCode).send({
         success: false,
-        message: error.message || "Error in Create Order API",
+        message: statusCode < 500 ? error.message : "Unable to create order",
         ...(error.details && { details: error.details }),
       });
     }

@@ -10,7 +10,11 @@ import orderModel from "../src/models/orderModel.js";
 import productModel from "../src/models/productModel.js";
 import productRoutes from "../src/routes/productRoutes.js";
 import userModel from "../src/models/userModel.js";
-import { sendProductLaunchEmails } from "../src/services/emailService.js";
+import {
+  sendAdminOrderEmail,
+  sendProductLaunchEmails,
+  sendReceiptEmail,
+} from "../src/services/emailService.js";
 import { createOrder } from "../src/services/orderService.js";
 import {
   recordProductCartInterest,
@@ -297,6 +301,77 @@ test("launch email sends only to verified subscribers in the matching interest g
     publicationStatus: "draft",
   }), 0);
   assert.equal(deliveries.length, 1);
+});
+
+test("customer receipt and both admin order emails include persisted item image snapshots", async (t) => {
+  const originalFindById = userModel.findById;
+  const originalCreateTransport = nodemailer.createTransport;
+  const originalRecipients = process.env.ORDER_NOTIFICATION_EMAILS;
+  const deliveries = [];
+  t.after(() => {
+    userModel.findById = originalFindById;
+    nodemailer.createTransport = originalCreateTransport;
+    if (originalRecipients === undefined) delete process.env.ORDER_NOTIFICATION_EMAILS;
+    else process.env.ORDER_NOTIFICATION_EMAILS = originalRecipients;
+  });
+
+  process.env.ORDER_NOTIFICATION_EMAILS = "ndayiyasoni@gmail.com,musany89@gmail.com";
+  userModel.findById = () => ({
+    select: async () => ({ name: "Customer", email: "buyer@example.test", phone: "+250700000000" }),
+  });
+  nodemailer.createTransport = () => ({
+    sendMail: async (message) => deliveries.push(message),
+  });
+  const order = {
+    _id: "order-123",
+    user: new mongoose.Types.ObjectId(),
+    createdAt: new Date("2026-10-09T12:00:00Z"),
+    orderStatus: "processing",
+    paymentMethod: "MTN",
+    totalAmount: 2400,
+    shippingInfo: { address: "KG 1", city: "Kigali", country: "Rwanda" },
+    orderItems: [{
+      name: "Notebook",
+      price: 1200,
+      quantity: 2,
+      image: "https://images.example.test/notebook.jpg",
+    }],
+  };
+
+  await sendReceiptEmail(order);
+  assert.equal(await sendAdminOrderEmail(order), 2);
+
+  assert.deepEqual(deliveries.map((message) => message.to), [
+    "buyer@example.test",
+    "ndayiyasoni@gmail.com",
+    "musany89@gmail.com",
+  ]);
+  for (const message of deliveries) {
+    assert.match(message.html, /notebook\.jpg/);
+    assert.match(message.html, /Notebook/);
+    assert.match(message.html, /RWF 2,400/);
+    assert.match(message.html, /KG 1/);
+  }
+});
+
+test("legacy products without images remain orderable and produce an email without a broken image", async () => {
+  const order = new orderModel({
+    user: new mongoose.Types.ObjectId(),
+    shippingInfo: {
+      country: "Rwanda",
+      address: "KG 1",
+      city: "Kigali",
+    },
+    orderItems: [{
+      name: "Legacy product",
+      price: 500,
+      quantity: 1,
+      product: new mongoose.Types.ObjectId(),
+    }],
+    itemPrice: 500,
+    totalAmount: 500,
+  });
+  await assert.doesNotReject(order.validate());
 });
 
 test("create route requires authentication and admin authorization; non-admins are rejected", async () => {
