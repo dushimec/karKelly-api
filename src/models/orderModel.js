@@ -67,9 +67,22 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: false,
     },
+    idempotencyKey: {
+      type: String,
+      trim: true,
+      maxlength: 128,
+    },
+    inventoryDeducted: {
+      type: Boolean,
+      default: false,
+    },
+    inventoryRestored: {
+      type: Boolean,
+      default: false,
+    },
     orderStatus: {
       type: String,
-      enum: ["processing", "shipped", "delivered", "canceled"],
+      enum: ["processing", "shipped", "delivered", "canceled", "refunded"],
       default: "processing",
     },
     deliveredAt: Date,
@@ -77,6 +90,11 @@ const orderSchema = new mongoose.Schema(
     canceledAt: Date,
   },
   { timestamps: true }
+);
+
+orderSchema.index(
+  { user: 1, idempotencyKey: 1 },
+  { unique: true, sparse: true }
 );
 
 export const orderModel = mongoose.model("Orders", orderSchema);

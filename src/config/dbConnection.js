@@ -1,12 +1,19 @@
 import mongoose from 'mongoose'
+import dns from 'node:dns'
 import 'dotenv/config'
-export const DBconnection = async () =>{
-  await mongoose.connect(process.env.MONGO_URL)
-    .then(()=>{
-        console.log('Database Connection is ready.....')
-      
-    })
-    .catch((err)=> {
-        console.log(err);
-    })
+
+mongoose.set('strictQuery', false);
+
+export const DBconnection = async () => {
+  const mongoUrl = process.env.MONGO_URL;
+  if (!mongoUrl) {
+    throw new Error("MONGO_URL is not set. Add your MongoDB connection URL to .env.");
+  }
+
+  if (process.env.MONGODB_DNS_SERVER) {
+    dns.setServers([process.env.MONGODB_DNS_SERVER]);
+  }
+
+  await mongoose.connect(mongoUrl);
+  console.log('Database Connection is ready.....');
 }

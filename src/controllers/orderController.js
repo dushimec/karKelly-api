@@ -2,23 +2,25 @@ import * as orderService from "../services/orderService.js";
 
 export const createOrderController = async (req, res) => {
   try {
-    const orderData = { ...req.body, user: req.user._id };
-    const order = await orderService.createOrder(orderData);
+    const orderData = {
+      ...req.body,
+      user: req.user._id,
+      idempotencyKey: req.get("Idempotency-Key") || req.body.idempotencyKey,
+    };
+    const { order, created } = await orderService.createOrder(orderData);
 
-    // Send response only after all operations are completed
-    res.status(201).send({
+    return res.status(created ? 201 : 200).send({
       success: true,
-      message: "Order placed successfully",
+      message: created ? "Order placed successfully" : "Order request already processed",
       order,
     });
   } catch (error) {
-    console.log(error);
-    // Ensure response is sent only once
+    console.error("Error creating order:", error.message);
     if (!res.headersSent) {
-      res.status(500).send({
+      return res.status(error.statusCode || 500).send({
         success: false,
         message: error.message || "Error in Create Order API",
-        error,
+        ...(error.details && { details: error.details }),
       });
     }
   }
@@ -42,7 +44,7 @@ export const getMyOrdersController = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
+    return res.status(error.statusCode || 500).send({
       success: false,
       message: "Error in My Orders API",
       error,
@@ -70,7 +72,7 @@ export const singleOrderDetailsController = async (req, res) => {
       error.name === "CastError"
         ? "Invalid Id"
         : error.message || "Error in Get Order Details API";
-    res.status(500).send({
+    return res.status(error.statusCode || 500).send({
       success: false,
       message: errorMessage,
     });
@@ -88,7 +90,7 @@ export const getAllOrdersController = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
+    return res.status(error.statusCode || 500).send({
       success: false,
       message: "Error in Get All Orders API",
       error,
@@ -111,7 +113,7 @@ export const changeOrderStatusController = async (req, res) => {
       error.name === "CastError"
         ? "Invalid Id"
         : error.message || "Error in Change Order Status API";
-    res.status(500).send({
+    return res.status(error.statusCode || 500).send({
       success: false,
       message: errorMessage,
     });

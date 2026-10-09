@@ -7,12 +7,12 @@ import cors from "cors";
 import "dotenv/config";
 import { errorHandler, notFound } from "./src/helpers/error-handler.js";
 import requestRateLimitConfig from "./src/config/rateLimit.js";
-import { DBconnection } from "./src/config/dbConnection.js";
 import cloudinary from "cloudinary";
 import usersRoutes from "./src/routes/userRoutes.js";
 import productRoutes from "./src/routes/productRoutes.js";
 import categorieRoutes from "./src/routes/categoryRoutes.js";
 import orderRoute from "./src/routes/orderRoutes.js";
+import adminRoutes from "./src/routes/adminRoutes.js";
 import cookieParser from "cookie-parser";
 import timeout from "connect-timeout";
 
@@ -21,7 +21,6 @@ const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 8010; // Fallback for local testing
 
 
 
@@ -57,6 +56,7 @@ app.use(`${api}/users`, usersRoutes);
 app.use(`${api}/products`, productRoutes);
 app.use(`${api}/category`, categorieRoutes);
 app.use(`${api}/orders`, orderRoute);
+app.use(`${api}/admin`, adminRoutes);
 
 // Error handling
 app.use(notFound);

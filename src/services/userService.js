@@ -19,12 +19,15 @@ export const registerUser = async (userData, file) => {
     throw new Error("Email already taken");
   }
 
-  const dataUri = getDataUri(file);
-  const cdb = await cloudinary.v2.uploader.upload(dataUri.content);
-  const image = {
-    public_id: cdb.public_id,
-    url: cdb.secure_url,
-  };
+  let profilePic = [];
+  if (file) {
+    const dataUri = getDataUri(file);
+    const cdb = await cloudinary.v2.uploader.upload(dataUri.content);
+    profilePic = [{
+      public_id: cdb.public_id,
+      url: cdb.secure_url,
+    }];
+  }
 
   
   const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -35,7 +38,7 @@ export const registerUser = async (userData, file) => {
     password,
     address,
     phone,
-    profilePic: [image],
+    profilePic,
     verificationToken,
   });
 

@@ -1,10 +1,12 @@
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import productModel from "../models/productModel.js";
-import { client } from "../config/twilio.js";
+import mongoose from "mongoose";
+import { getTwilioClient } from "../config/twilio.js";
 import cron from "node-cron";
 import "dotenv/config";
 import { sendReceiptEmail } from "./emailService.js";
+import { recordPurchasedProductInterests } from "./productInterestService.js";
 
 /**
  * Get all orders from the database.
@@ -31,6 +33,11 @@ export const getAllOrders = async () => {
 export const getTotalSales = async () => {
   try {
     const result = await orderModel.aggregate([
+      {
+        $match: {
+          orderStatus: { $nin: ["canceled", "refunded"] },
+        },
+      },
       {
         $group: {
           _id: null,
@@ -120,16 +127,6 @@ export const getRecentOrders = async (limit = 5) => {
  * @param {Array} orderItems - List of order items with product and quantity.
  * @param {Boolean} increment - Whether to increment or decrement the stock.
  */
-const updateProductStock = async (orderItems, increment = false) => {
-  for (const item of orderItems) {
-    const product = await productModel.findById(item.product);
-    if (product) {
-      product.stock += increment ? item.quantity : -item.quantity;
-      await product.save();
-    }
-  }
-};
-
 /**
  * Update the status of an order.
  * @param {String} orderId
@@ -137,48 +134,73 @@ const updateProductStock = async (orderItems, increment = false) => {
  * @returns {Promise<Object>}
  */
 export const updateOrderStatus = async (orderId, status) => {
-  try {
-    const validStatuses = ["processing", "shipped", "delivered", "canceled"];
-    if (!validStatuses.includes(status)) {
-      throw new Error("Invalid status provided");
-    }
-
-    const order = await orderModel
-      .findById(orderId)
-      .populate("orderItems.product", "name stock");
-
-    if (!order) {
-      throw new Error("Order not found");
-    }
-
-    if (status === "canceled" && order.orderStatus !== "canceled") {
-      await orderModel.updateOne(
-        { _id: orderId },
-        { $inc: { totalAmount: -order.totalAmount } }
-      );
-
-      await updateProductStock(order.orderItems, true);
-    }
-
-    order.orderStatus = status;
-    const updatedOrder = await order.save();
-
-    return updatedOrder;
-  } catch (error) {
-    console.error("Error updating order status:", error.message);
-    throw new Error("Failed to update order status");
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    const error = new Error("Invalid Order ID");
+    error.statusCode = 400;
+    throw error;
   }
-};
+  const validStatuses = ["processing", "shipped", "delivered", "canceled", "refunded"];
+  if (!validStatuses.includes(status)) {
+    const error = new Error("Invalid status provided");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const session = await mongoose.startSession();
+  let updatedOrder;
+  try {
+    await session.withTransaction(async () => {
+      const order = await orderModel.findById(orderId).session(session);
+      if (!order) throw new Error("Order not found");
+      if (order.orderStatus === status) {
+        updatedOrder = order;
+        return;
+      }
+      if (["canceled", "refunded"].includes(order.orderStatus)) {
+        const error = new Error("Canceled and refunded orders cannot be changed");
+        error.statusCode = 409;
+        throw error;
+      }
+      const transitions = {
+        processing: ["shipped", "delivered", "canceled", "refunded"],
+        shipped: ["delivered", "canceled", "refunded"],
+        delivered: ["refunded"],
+      };
+      if (!transitions[order.orderStatus]?.includes(status)) {
+        const error = new Error(`Cannot change order from ${order.orderStatus} to ${status}`);
+        error.statusCode = 409;
+        throw error;
+      }
+
+      if (["canceled", "refunded"].includes(status) && order.inventoryDeducted && !order.inventoryRestored) {
+        for (const item of order.orderItems) {
+          await productModel.updateOne(
+            { _id: item.product },
+            { $inc: { stock: item.quantity } },
+            { session }
+          );
+        }
+        order.inventoryRestored = true;
+      }
+      order.orderStatus = status;
+      if (status === "canceled") order.canceledAt = new Date();
+      updatedOrder = await order.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
+  return updatedOrder;
+}
 
 /**
  * Send SMS notification to admin.
  * @param {Object} order - The order for which notification is to be sent.
  */
 const sendNotificationToAdmin = async (order) => {
-  await order
-    .populate("user", "name")
-    .populate("orderItems.product", "name")
-    .execPopulate();
+  await order.populate([
+    { path: "user", select: "name" },
+    { path: "orderItems.product", select: "name" },
+  ]);
   const productName = order.orderItems
     .map((item) => item.product.name)
     .join(", ");
@@ -189,7 +211,7 @@ const sendNotificationToAdmin = async (order) => {
   };
 
   try {
-    const response = await client.messages.create(message);
+    const response = await getTwilioClient().messages.create(message);
     console.log("SMS notification sent successfully", response.sid);
   } catch (error) {
     console.error(
@@ -209,6 +231,7 @@ const cancelOldProcessingOrders = async () => {
     console.log("Finding processing orders older than two days...");
     const ordersToCancel = await orderModel.find({
       orderStatus: "processing",
+      inventoryDeducted: true,
       createdAt: { $lt: twoDaysAgo },
     });
 
@@ -219,14 +242,7 @@ const cancelOldProcessingOrders = async () => {
     }
 
     for (const order of ordersToCancel) {
-      order.orderStatus = "canceled";
-      order.canceledAt = Date.now();
-      await updateProductStock(order.orderItems, true);
-      await orderModel.updateOne(
-        { _id: order._id },
-        { $inc: { totalAmount: -order.totalAmount } }
-      );
-      await order.save();
+      await updateOrderStatus(order._id.toString(), "canceled");
       console.log(`Order #${order._id} has been canceled due to inactivity.`);
     }
   } catch (error) {
@@ -234,14 +250,14 @@ const cancelOldProcessingOrders = async () => {
   }
 };
 
-(async () => {
-  await cancelOldProcessingOrders();
-})();
+export const startOrderJobs = () => {
+  void cancelOldProcessingOrders();
 
-cron.schedule("0 0 * * *", () => {
-  console.log("Running scheduled task to cancel old processing orders...");
-  cancelOldProcessingOrders();
-});
+  cron.schedule("0 0 * * *", () => {
+    console.log("Running scheduled task to cancel old processing orders...");
+    void cancelOldProcessingOrders();
+  });
+};
 
 /**
  * Create a new order and send notifications.
@@ -258,26 +274,142 @@ export const createOrder = async (orderData) => {
     user,
   } = orderData;
 
-  const totalAmount = orderItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
+  if (!Array.isArray(orderItems) || orderItems.length === 0) {
+    const error = new Error("An order must contain at least one item");
+    error.statusCode = 400;
+    throw error;
+  }
+  const idempotencyKey = String(
+    orderData.idempotencyKey || orderData.paymentInfo || ""
+  ).trim();
+  if (!idempotencyKey || idempotencyKey.length > 128) {
+    const error = new Error("Provide a payment reference or Idempotency-Key for safe retries");
+    error.statusCode = 400;
+    throw error;
+  }
 
-  const order = await orderModel.create({
-    user,
-    shippingInfo,
-    orderItems,
-    paymentMethod,
-    paymentInfo,
-    itemPrice,
-    totalAmount,
-  });
+  const quantities = new Map();
+  for (const item of orderItems) {
+    if (
+      !item.product ||
+      !mongoose.Types.ObjectId.isValid(item.product) ||
+      !Number.isInteger(Number(item.quantity)) ||
+      Number(item.quantity) < 1
+    ) {
+      const error = new Error("Each order item requires a valid product ID and positive integer quantity");
+      error.statusCode = 400;
+      throw error;
+    }
+    const productId = item.product.toString();
+    quantities.set(productId, (quantities.get(productId) || 0) + Number(item.quantity));
+  }
 
-  await Promise.all([
-    updateProductStock(orderItems),
-    sendNotificationToAdmin(order),
-    sendReceiptEmail(order),
-  ]);
+  const existing = await orderModel.findOne({ user, idempotencyKey });
+  if (existing) return { order: existing, created: false };
 
-  return order;
+  const session = await mongoose.startSession();
+  let order;
+  try {
+    await session.withTransaction(async () => {
+      const retry = await orderModel.findOne({ user, idempotencyKey }).session(session);
+      if (retry) {
+        order = retry;
+        return;
+      }
+
+      const products = new Map();
+      for (const [productId, quantity] of quantities) {
+        const product = await productModel.findOne({
+          _id: productId,
+          $or: [
+            { publicationStatus: "published" },
+            { publicationStatus: { $exists: false } },
+          ],
+        }).session(session);
+        if (product?.listingType === "rent") {
+          const error = new Error(`Rental enquiries cannot be placed as orders: ${product.name}`);
+          error.statusCode = 409;
+          error.details = { productId, productName: product.name };
+          throw error;
+        }
+        if (!product) {
+          const error = new Error(`Product is unavailable for ordering: ${productId}`);
+          error.statusCode = 409;
+          error.details = { productId, requested: quantity, available: 0 };
+          throw error;
+        }
+        const available = product.stock;
+        if (available < quantity) {
+          const error = new Error(`Insufficient stock for ${product?.name || productId}`);
+          error.statusCode = 409;
+          error.details = {
+            productId,
+            productName: product?.name || null,
+            requested: quantity,
+            available,
+          };
+          throw error;
+        }
+        products.set(productId, product);
+      }
+
+      const savedItems = [];
+      let totalAmount = 0;
+      for (const [productId, quantity] of quantities) {
+        const product = products.get(productId);
+        const result = await productModel.updateOne(
+          { _id: product._id, stock: { $gte: quantity } },
+          { $inc: { stock: -quantity } },
+          { session }
+        );
+        if (result.modifiedCount !== 1) {
+          const error = new Error(`Insufficient stock for ${product.name}`);
+          error.statusCode = 409;
+          error.details = {
+            productId,
+            productName: product.name,
+            requested: quantity,
+            available: Math.max(0, product.stock),
+          };
+          throw error;
+        }
+        totalAmount += product.price * quantity;
+        savedItems.push({
+          product: product._id,
+          name: product.name,
+          price: product.price,
+          quantity,
+          image: product.images[0]?.url || "",
+        });
+      }
+
+      [order] = await orderModel.create([{
+        user,
+        shippingInfo,
+        orderItems: savedItems,
+        paymentMethod,
+        paymentInfo,
+        idempotencyKey,
+        itemPrice: totalAmount,
+        totalAmount,
+        inventoryDeducted: true,
+      }], { session });
+      await recordPurchasedProductInterests([...products.values()], user, session);
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      const duplicate = await orderModel.findOne({ user, idempotencyKey });
+      if (duplicate) return { order: duplicate, created: false };
+    }
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  try {
+    await Promise.all([sendNotificationToAdmin(order), sendReceiptEmail(order)]);
+  } catch (error) {
+    console.error("Order notification delivery failed:", error.message);
+  }
+  return { order, created: true };
 };

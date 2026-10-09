@@ -23,9 +23,13 @@ export const isAuth = async (req, res, next) => {
 
   try {
     const decodeData = JWT.verify(token, process.env.JWT_SECRET);
-    console.log(decodeData);
     req.user = await userModel.findById(decodeData._id);
-    req.user.isAdmin = decodeData.isAdmin;  
+    if (!req.user) {
+      return res.status(401).send({
+        success: false,
+        message: "Unauthorized User",
+      });
+    }
     next();
   } catch (error) {
     return res.status(401).send({

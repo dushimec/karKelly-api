@@ -6,11 +6,13 @@ export const notFound = (req, res, next) => {
     next(error);
 };
 
-export const errorHandler = (err, req,res,next) =>{
-    const statusCode = res.status == 200 ? 500 : res.statusCode;
-    res.status(statusCode);
-    res.json({
-        message:err.message,
-        stack:err.stack,
-    })
-}
+export const errorHandler = (err, req, res, next) => {
+    const statusCode = err.statusCode || err.status || (res.statusCode !== 200 ? res.statusCode : 500);
+    if (statusCode >= 500) {
+        console.error("Unhandled API error:", err);
+    }
+    res.status(statusCode).json({
+        success: false,
+        message: statusCode < 500 ? err.message : "Internal server error",
+    });
+};

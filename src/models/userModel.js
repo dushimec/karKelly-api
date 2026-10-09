@@ -43,6 +43,13 @@ const userSchema = new mongoose.Schema(
     verificationToken: {
       type: String,
     },
+    productInterests: {
+      type: [{
+        type: String,
+        enum: ["school-supplies", "hardware", "cars", "food"],
+      }],
+      default: [],
+    },
   },
   { timestamps: true }
 );
