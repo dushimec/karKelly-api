@@ -1,5 +1,6 @@
 import { sendProductLaunchEmails } from '../services/emailService.js';
 import { recordProductCartInterest } from "../services/productInterestService.js";
+import { parseProductImportSpreadsheet } from "../services/productImportService.js";
 import * as productService from '../services/productService.js';
 
 const notifyProductLaunch = async (product) => {
@@ -220,6 +221,29 @@ export const createProductsBulkController = async (req, res) => {
   }
 };
 
+export const previewProductSpreadsheetController = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send({ success: false, message: "Upload an Excel .xlsx workbook in the file field" });
+    }
+
+    const preview = await parseProductImportSpreadsheet(req.file.buffer);
+    return res.status(preview.valid ? 200 : 422).send({
+      success: preview.valid,
+      message: preview.valid
+        ? "Spreadsheet parsed. Add or review each product image URL before submitting."
+        : "Some spreadsheet rows need correction before they can be submitted.",
+      ...preview,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).send({
+      success: false,
+      message: error.statusCode ? error.message : "Unable to read the product spreadsheet",
+      ...(error.errors && { errors: error.errors }),
+    });
+  }
+};
+
 export const createCarListingController = async (req, res) => {
   try {
     const product = await productService.createCarListing(req.body, req.files || []);
@@ -271,7 +295,7 @@ export const setCarPublicationStatusController = async (req, res) => {
 export const updateProductController = async (req, res) => {
   try {
     const previous = await productService.getSingleProduct(req.params.id, true);
-    const product = await productService.updateProduct(req.params.id, req.body);
+    const product = await productService.updateProduct(req.params.id, req.body, req.file);
     if (previous?.publicationStatus !== "published" && product.publicationStatus === "published") {
       await notifyProductLaunch(product);
     }
@@ -334,10 +358,13 @@ export const deleteProductImageController = async (req, res) => {
 
 export const deleteProductController = async (req, res) => {
   try {
-    await productService.deleteProduct(req.params.id);
+    const result = await productService.deleteProduct(req.params.id);
     return res.status(200).send({
       success: true,
-      message: "Product deleted successfully",
+      archived: result.archived,
+      message: result.archived
+        ? "Product archived because it has order history"
+        : "Product deleted successfully",
     });
   } catch (error) {
     return res.status(error.statusCode || 500).send({

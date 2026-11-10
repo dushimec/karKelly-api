@@ -8,7 +8,11 @@
     "dev": "nodemon src/index.js",
     "server": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "import:school-office-catalog": "node scripts/import-school-office-catalog.js",
+    "backfill:school-office-images": "node scripts/backfill-school-office-images.js",
+    "backfill:product-images": "node scripts/backfill-product-images.js",
+    "refresh:product-images": "node scripts/backfill-product-images.js --refresh"
   },
   "engines": {
     "node": ">=20.17.0"
@@ -26,6 +30,7 @@
     "cors": "^2.8.5",
     "datauri": "^4.1.0",
     "dotenv": "^8.2.0",
+    "exceljs": "^4.4.0",
     "express": "^4.17.1",
     "express-async-handler": "^1.2.0",
     "express-jwt": "^6.0.0",

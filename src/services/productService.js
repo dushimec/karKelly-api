@@ -5,6 +5,10 @@ import categoryModel from "../models/categoryModel.js";
 import { createCategory } from "./categoryService.js";
 import cloudinary from "cloudinary";
 import { getDataUri } from "../utils/features.js";
+import {
+  downloadApprovedPixabayImage,
+  getCachedPixabayProductImage,
+} from "./pixabayImageService.js";
 
 export class ProductValidationError extends Error {
   constructor(errors) {
@@ -89,6 +93,16 @@ export const validateProductInput = (item, index = 0, fileCount = 0, requireImag
       errors.push({ index, field, message: `${field} is required` });
     }
   }
+  if (
+    item.serviceType !== undefined &&
+    !["stationery", "hardware", "book", "car", "food"].includes(item.serviceType)
+  ) {
+    errors.push({
+      index,
+      field: "serviceType",
+      message: "serviceType must be stationery, hardware, book, car, or food",
+    });
+  }
 
   const price = Number(item.price);
   if (
@@ -156,6 +170,8 @@ const imageRecordFromUrl = (image) => ({
   ...(image.attribution && { attribution: String(image.attribution).slice(0, 500) }),
   ...(image.isbn && { isbn: String(image.isbn).slice(0, 32) }),
 });
+
+const primaryImageUrl = (images) => images[0]?.url;
 
 const uploadProductImage = async (file) => {
   try {
@@ -244,9 +260,9 @@ export const validateAdminProductInput = (data, file) => {
   }
 
   const imageUrl = typeof data.imageUrl === "string" ? data.imageUrl.trim() : "";
-  const validBookImageUrl = serviceType === "book" && isValidImageUrl(imageUrl);
-  if (!file && !validBookImageUrl) {
-    errors.push({ field: "file", message: "A product image is required (books may provide a valid HTTPS imageUrl)" });
+  const validImageUrl = isValidImageUrl(imageUrl);
+  if (!file && !validImageUrl) {
+    errors.push({ field: "file", message: "A product image is required (provide a valid HTTPS imageUrl or upload a file)" });
   }
   if (imageUrl && !isValidImageUrl(imageUrl)) {
     errors.push({ field: "imageUrl", message: "imageUrl must be a valid HTTPS URL" });
@@ -305,10 +321,11 @@ export const validateAdminProductInput = (data, file) => {
     serviceType,
     publicationStatus: isPublished ? "published" : "draft",
     ...(Object.keys(fields).length && fields),
-    imageUrl: validBookImageUrl ? imageUrl : undefined,
+    imageUrl: validImageUrl ? imageUrl : undefined,
     imageMetadata: {
       ...(data.imageSource && { source: String(data.imageSource).slice(0, 100) }),
       ...(data.imageUrl && isValidImageUrl(data.imageUrl) && { sourceUrl: imageUrl }),
+      ...(data.imageAttribution && { attribution: String(data.imageAttribution).slice(0, 500) }),
       ...(data.isbn && { isbn: String(data.isbn).slice(0, 32) }),
     },
   };
@@ -426,6 +443,7 @@ export const createProduct = async (productData, file) => {
       serviceType: input.serviceType,
       publicationStatus: input.publicationStatus,
       images: [image],
+      image_url: image.url,
       ...(input.listingType && { listingType: input.listingType }),
       ...Object.fromEntries(
         ["author", "publisher", "isbn", "size", "unit", "brand", "color", "material", "warranty",
@@ -516,8 +534,10 @@ export const createProductsBulk = async (items, files = []) => {
         price: item.price,
         stock: item.stock,
         category: categories[index]._id,
+        ...(item.serviceType && { serviceType: item.serviceType }),
         ...(item.sku && { sku: String(item.sku).trim() }),
         images,
+        image_url: primaryImageUrl(images),
         ...(carDetails && { carDetails, publicationStatus: item.publicationStatus || "draft" }),
       };
     }));
@@ -586,6 +606,7 @@ export const createCarListing = async (data, files = []) => {
     stock: 1,
     category: category._id,
     images,
+    image_url: primaryImageUrl(images),
     carDetails: car,
     publicationStatus: "draft",
   });
@@ -615,7 +636,10 @@ export const updateCarListing = async (id, data) => {
   product.description = candidate.description;
   product.price = Number(candidate.price);
   product.carDetails = cleanCarDetails(mergedCar);
-  if (data.images) product.images = data.images.map(imageRecordFromUrl);
+  if (data.images) {
+    product.images = data.images.map(imageRecordFromUrl);
+    product.image_url = primaryImageUrl(product.images);
+  }
   await product.save();
   return product;
 };
@@ -637,7 +661,7 @@ export const setCarPublicationStatus = async (id, publicationStatus) => {
   return product;
 };
 
-export const updateProduct = async (id, productData) => {
+export const updateProduct = async (id, productData, file) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const error = new Error("Invalid Product ID");
     error.statusCode = 400;
@@ -687,6 +711,10 @@ export const updateProduct = async (id, productData) => {
   }
   if (productData.isPublished !== undefined && parseBoolean(productData.isPublished) === null) {
     errors.push({ field: "isPublished", message: "isPublished must be true or false" });
+  }
+  const imageUrl = typeof productData.imageUrl === "string" ? productData.imageUrl.trim() : "";
+  if (imageUrl && !isValidImageUrl(imageUrl)) {
+    errors.push({ field: "imageUrl", message: "imageUrl must be a valid HTTPS URL" });
   }
   for (const field of [
     "author", "publisher", "isbn", "size", "unit", "brand", "color", "material",
@@ -773,6 +801,23 @@ export const updateProduct = async (id, productData) => {
     }
     product.carDetails = cleanCarDetails(carData);
   }
+  if (file) {
+    const uploaded = await uploadProductImage(file);
+    product.images = [uploaded, ...product.images.filter((image) => image.url !== uploaded.url)];
+    product.image_url = uploaded.url;
+  } else if (imageUrl) {
+    const imageRecord = imageRecordFromUrl({
+      url: imageUrl,
+      source: productData.imageSource,
+      sourceUrl: productData.imageSourceUrl,
+      attribution: productData.imageAttribution,
+    });
+    product.images = [
+      imageRecord,
+      ...product.images.filter((image) => image.url !== imageUrl),
+    ];
+    product.image_url = imageUrl;
+  }
   await product.save();
   return product;
 };
@@ -789,9 +834,65 @@ export const updateProductImage = async (id, file, imageData = {}) => {
     error.statusCode = 404;
     throw error;
   }
-  if (file) product.images.push(await uploadProductImage(file));
+  if (file) {
+    const uploaded = await uploadProductImage(file);
+    product.images.push({
+      ...uploaded,
+      ...imageRecordFromUrl({ ...imageData, url: uploaded.url }),
+    });
+  }
   else if (isValidImageUrl(imageData.url || "")) product.images.push(imageRecordFromUrl(imageData));
   else throw new ProductValidationError([{ index: 0, field: "image", message: "Provide a valid HTTPS URL or image file" }]);
+  product.image_url = primaryImageUrl(product.images);
+  await product.save();
+  return product;
+};
+
+export const approvePixabayProductImage = async (id, candidateId) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error("Invalid Product ID");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (typeof candidateId !== "string" || !candidateId.trim()) {
+    const error = new Error("A Pixabay candidate ID is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const product = await productModel.findById(id);
+  if (!product) {
+    const error = new Error("Product not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const candidate = await getCachedPixabayProductImage(id, product.name, candidateId);
+  if (!candidate) {
+    const error = new Error("Pixabay candidate is missing or its search cache has expired; search again");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const file = await downloadApprovedPixabayImage(candidate);
+  const uploaded = await uploadProductImage(file);
+  const attribution = candidate.user
+    ? `Pixabay contributor: ${candidate.user}`
+    : "Pixabay";
+  const approvedImage = {
+    ...uploaded,
+    ...imageRecordFromUrl({
+      url: uploaded.url,
+      source: "Pixabay",
+      sourceUrl: candidate.pageURL,
+      attribution,
+    }),
+  };
+  product.images = [
+    approvedImage,
+    ...product.images.filter((image) => image.sourceUrl !== candidate.pageURL),
+  ];
+  product.image_url = primaryImageUrl(product.images);
   await product.save();
   return product;
 };
@@ -811,6 +912,7 @@ export const deleteProductImage = async (id, imageId) => {
   const imageIndex = product.images.findIndex((image) => image._id.toString() === imageId);
   if (imageIndex === -1) throw new Error("Image not found");
   const [image] = product.images.splice(imageIndex, 1);
+  product.image_url = primaryImageUrl(product.images);
   await product.save();
   if (image.public_id) await cloudinary.v2.uploader.destroy(image.public_id);
   return product;
@@ -832,13 +934,13 @@ export const deleteProduct = async (id) => {
   if (hasOrderHistory) {
     product.publicationStatus = "archived";
     await product.save();
-    return product;
+    return { product, archived: true };
   }
   await product.deleteOne();
   for (const image of product.images) {
     if (image.public_id) await cloudinary.v2.uploader.destroy(image.public_id);
   }
-  return product;
+  return { product, archived: false };
 };
 
 export const addProductReview = async (productId, reviewData, user) => {
@@ -862,15 +964,22 @@ export const addProductReview = async (productId, reviewData, user) => {
 };
 
 export const getProductsByCategoryName = async (categoryName, sortBy, options) => {
-  const normalized = String(categoryName).trim().toLowerCase();
+  const requestedCategory = String(categoryName).trim().toLowerCase();
+  const normalized = requestedCategory === "schoolmatetial"
+    ? "schoolmaterial"
+    : requestedCategory;
   const aliasServices = {
     carservices: "car",
-    schoolmatetial: { $in: ["stationery", "book"] },
+    schoolmaterial: { $in: ["stationery", "book"] },
     hardware: "hardware",
     food: "food",
+    foodservices: "food",
   };
   if (Object.hasOwn(aliasServices, normalized)) {
-    const category = await resolveCategory(categoryName);
+    let category = await resolveCategory(normalized);
+    if (!category && normalized !== requestedCategory) {
+      category = await resolveCategory(requestedCategory);
+    }
     const serviceTypeQuery = { serviceType: aliasServices[normalized] };
     if (!category) return getAllProducts(serviceTypeQuery, sortBy, options);
     return getAllProducts({

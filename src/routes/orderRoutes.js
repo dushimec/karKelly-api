@@ -4,6 +4,7 @@ import {
   changeOrderStatusController,
   createOrderController,
   getAllOrdersController,
+  getAdminOrderDetailsController,
   getMyOrdersController,
   getRecentOrdersController,
   getTotalCustomersController,
@@ -19,6 +20,7 @@ orderRoute.get("/my-orders", isAuth, getMyOrdersController);
 orderRoute.get("/my-orders/:id", isAuth, singleOrderDetailsController);
 
 orderRoute.get("/admin/get-all-orders", isAuth, isAdmin, getAllOrdersController);
+orderRoute.get("/admin/order/:id", isAuth, isAdmin, getAdminOrderDetailsController);
 orderRoute.put("/admin/order/:id", isAuth, isAdmin, changeOrderStatusController);
 
 orderRoute.get("/admin/total-sales", isAuth, isAdmin, getTotalSalesController);

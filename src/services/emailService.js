@@ -95,6 +95,59 @@ export const sendReceiptEmail = async (order) => {
   });
 };
 
+export const sendOrderStatusEmail = async (order, status) => {
+  const userId = order.user?._id || order.user;
+  const user = await userModel.findById(userId).select("name email");
+  if (!user?.email) throw new Error("Order customer has no email address");
+
+  const customerName = escapeHtml(order.shippingInfo?.fullname || user.name || "Customer");
+  const orderNumber = escapeHtml(order.orderNumber || order._id);
+  const isCanceled = status === "canceled";
+  const statusHeading = isCanceled ? "Your order has been canceled" : "Your order is confirmed";
+  const statusMessage = isCanceled
+    ? "Your order was canceled by KarKelly. Any inventory reserved for this order has been returned."
+    : "Your order has been confirmed and marked as delivered. Thank you for shopping with KarKelly.";
+  const items = (order.orderItems || []).map((item) => {
+    const imageUrl = trustedHttpsUrl(item.image);
+    const image = imageUrl
+      ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.name)}" width="72" style="width:72px;height:72px;object-fit:cover;border-radius:8px;">`
+      : "";
+    return `<tr>
+      <td style="padding:10px;border-bottom:1px solid #e2e8f0;">${image}</td>
+      <td style="padding:10px;border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(item.name)}</strong><br>Quantity: ${escapeHtml(item.quantity)}</td>
+      <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;">RWF ${escapeHtml(Number(item.price).toLocaleString("en-RW"))}</td>
+    </tr>`;
+  }).join("");
+  const logoUrl = trustedHttpsUrl(process.env.BRAND_LOGO_URL);
+  const logo = logoUrl
+    ? `<img src="${escapeHtml(logoUrl)}" alt="KarKelly" width="140" style="display:block;height:auto;margin:0 auto 20px;">`
+    : `<strong style="display:block;font-size:24px;margin-bottom:20px;">KarKelly</strong>`;
+  const html = `
+    <div style="background:#f1f5f9;padding:24px;font-family:Arial,sans-serif;color:#172033;">
+      <div style="max-width:680px;margin:auto;background:#fff;border-radius:12px;padding:24px;">
+        <div style="text-align:center;">${logo}</div>
+        <h1 style="font-size:24px;">${statusHeading}</h1>
+        <p>Hello ${customerName},</p>
+        <p>${statusMessage}</p>
+        <p><strong>Order number:</strong> ${orderNumber}<br>
+        <strong>Status:</strong> ${escapeHtml(status)}<br>
+        <strong>Payment method:</strong> ${escapeHtml(order.paymentMethod || "MTN")}</p>
+        <h2 style="font-size:18px;">Order items</h2>
+        <table style="width:100%;border-collapse:collapse;"><tbody>${items}</tbody></table>
+        <p style="text-align:right;font-size:18px;"><strong>Total: RWF ${escapeHtml(Number(order.totalAmount ?? order.itemPrice).toLocaleString("en-RW"))}</strong></p>
+        <h2 style="font-size:18px;">Delivery details</h2>
+        <p>${escapeHtml(order.shippingInfo?.address)}<br>${escapeHtml(order.shippingInfo?.city)}, ${escapeHtml(order.shippingInfo?.country)}</p>
+      </div>
+    </div>`;
+
+  await createMailer().sendMail({
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: `KarKelly order ${status}: ${order.orderNumber || order._id}`,
+    html,
+  });
+};
+
 const createMailer = () => nodemailer.createTransport({
   service: "gmail",
   port: 465,

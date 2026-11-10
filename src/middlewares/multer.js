@@ -34,3 +34,23 @@ const handleUpload = (middleware) => (req, res, next) => {
 
 export const singleUpload = handleUpload(upload.single("file"));
 export const multipleUpload = handleUpload(upload.array("files", 20));
+
+const spreadsheetUploadMiddleware = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, callback) => {
+    const isXlsx = file.originalname.toLocaleLowerCase("en").endsWith(".xlsx");
+    const allowedMimeTypes = new Set([
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/octet-stream",
+    ]);
+    if (!isXlsx || !allowedMimeTypes.has(file.mimetype)) {
+      const error = new Error("Upload an Excel .xlsx workbook");
+      error.statusCode = 400;
+      return callback(error);
+    }
+    callback(null, true);
+  },
+});
+
+export const spreadsheetUpload = handleUpload(spreadsheetUploadMiddleware.single("file"));

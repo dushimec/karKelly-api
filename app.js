@@ -15,6 +15,7 @@ import orderRoute from "./src/routes/orderRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
 import cookieParser from "cookie-parser";
 import timeout from "connect-timeout";
+import { normalizeApiPrefix } from "./src/utils/apiPrefix.js";
 
 // Derive __dirname from import.meta.url
 const __filename = url.fileURLToPath(import.meta.url);
@@ -49,7 +50,7 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
-const api = process.env.API_URL;
+const api = normalizeApiPrefix(process.env.API_URL);
 
 // Define your routes
 app.use(`${api}/users`, usersRoutes);

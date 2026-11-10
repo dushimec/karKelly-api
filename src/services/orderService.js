@@ -4,9 +4,22 @@ import productModel from "../models/productModel.js";
 import mongoose from "mongoose";
 import { getTwilioClient } from "../config/twilio.js";
 import cron from "node-cron";
-import "dotenv/config";
-import { sendAdminOrderEmail, sendReceiptEmail } from "./emailService.js";
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { sendAdminOrderEmail, sendOrderStatusEmail, sendReceiptEmail } from "./emailService.js";
 import { recordPurchasedProductInterests } from "./productInterestService.js";
+
+const backendEnvPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../.env"
+);
+const backendEnv = dotenv.config({ path: backendEnvPath }).parsed || {};
+for (const key of ["DISCORD_WEBHOOK_URL", "ADMIN_LINK_BASE"]) {
+  if (!process.env[key]?.trim() && backendEnv[key]?.trim()) {
+    process.env[key] = backendEnv[key].trim();
+  }
+}
 
 /**
  * Get all orders from the database.
@@ -17,13 +30,25 @@ export const getAllOrders = async () => {
     // Fetch all orders from the database
     const orders = await orderModel
       .find()
-      .populate("user", "name email") // Populate user details
-      .populate("orderItems.product", "name price"); // Populate product details
+      .sort({ createdAt: -1 })
+      .populate("user", "name email phone")
+      .populate("orderItems.product", "name price images image_url");
     return orders;
   } catch (error) {
     console.error("Error fetching all orders:", error.message);
     throw new Error("Failed to fetch all orders");
   }
+};
+
+export const getOrderById = async (orderId) => {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    const error = new Error("Invalid Order ID");
+    error.statusCode = 400;
+    throw error;
+  }
+  return orderModel.findById(orderId)
+    .populate("user", "name email phone")
+    .populate("orderItems.product", "name price images image_url");
 };
 
 /**
@@ -91,8 +116,8 @@ export const getMyOrders = async (userId) => {
     // Fetch all orders for the specified user
     const orders = await orderModel
       .find({ user: userId })
-      .populate("orderItems.product", "name price") // Populate product details
-      .populate("user", "name email"); // Populate user details
+      .populate("orderItems.product", "name price images image_url")
+      .populate("user", "name email phone");
 
     return orders;
   } catch (error) {
@@ -112,8 +137,8 @@ export const getRecentOrders = async (limit = 5) => {
       .find()
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate("user", "name email")
-      .populate("orderItems.product", "name price");
+      .populate("user", "name email phone")
+      .populate("orderItems.product", "name price images image_url");
 
     return recentOrders;
   } catch (error) {
@@ -148,6 +173,7 @@ export const updateOrderStatus = async (orderId, status) => {
 
   const session = await mongoose.startSession();
   let updatedOrder;
+  let shouldNotifyCustomer = false;
   try {
     await session.withTransaction(async () => {
       const order = await orderModel.findById(orderId).session(session);
@@ -184,10 +210,17 @@ export const updateOrderStatus = async (orderId, status) => {
       }
       order.orderStatus = status;
       if (status === "canceled") order.canceledAt = new Date();
+      if (status === "delivered") order.deliveredAt = new Date();
       updatedOrder = await order.save({ session });
+      shouldNotifyCustomer = ["delivered", "canceled"].includes(status);
     });
   } finally {
     await session.endSession();
+  }
+  if (shouldNotifyCustomer) {
+    void sendOrderStatusEmail(updatedOrder, status).catch((error) => {
+      console.error(`Customer order ${status} email failed:`, error.message);
+    });
   }
   return updatedOrder;
 }
@@ -200,7 +233,7 @@ const sendNotificationToAdmin = async (order) => {
   if (!process.env.TWILIO_PHONE_NUMBER || !process.env.ADMIN_PHONE_NUMBER) {
     throw new Error("Twilio order SMS requires TWILIO_PHONE_NUMBER and ADMIN_PHONE_NUMBER");
   }
-  await order.populate({ path: "user", select: "name" });
+  await order.populate({ path: "user", select: "name phone" });
   const productSummary = order.orderItems
     .map((item) => `${item.name} x${item.quantity}`)
     .join(", ")
@@ -213,6 +246,74 @@ const sendNotificationToAdmin = async (order) => {
 
   const response = await getTwilioClient().messages.create(message);
   console.log("Order SMS notification sent successfully", response.sid);
+};
+
+const notificationText = (value, maxLength) => (
+  String(value || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength)
+);
+
+const notifyAdminOfNewOrder = async (order) => {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  const adminBase = process.env.ADMIN_LINK_BASE;
+
+  if (!webhookUrl || !adminBase) {
+    console.log("Discord order notification skipped: configure DISCORD_WEBHOOK_URL and ADMIN_LINK_BASE.");
+    return;
+  }
+
+  try {
+    const customer = await userModel
+      .findById(order.user?._id || order.user)
+      .select("name phone");
+    const customerName = notificationText(
+      order.shippingInfo?.fullname || customer?.name || "Customer",
+      256
+    );
+    const customerPhone = notificationText(
+      order.shippingInfo?.phone || customer?.phone || "Not provided",
+      256
+    );
+    const adminBaseUrl = adminBase.replace(/\/+$/, "");
+    const orderUrl = `${adminBaseUrl}/admin/orders/${order._id}`;
+    const payload = {
+      embeds: [{
+        title: "🚨 New Order Received!",
+        color: 15158332,
+        fields: [
+          {
+            name: "Order Number",
+            value: `\`${notificationText(order.orderNumber || order._id, 200)}\``,
+            inline: true,
+          },
+          { name: "Customer", value: customerName, inline: true },
+          { name: "Phone", value: customerPhone, inline: true },
+          {
+            name: "Total",
+            value: `${Number(order.totalAmount ?? order.itemPrice).toLocaleString("en-RW")} RWF`,
+            inline: true,
+          },
+        ],
+        description: `👉 **[Confirm Order or Cancel](${orderUrl})**`,
+      }],
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Discord webhook responded with HTTP ${response.status}`);
+    }
+    console.log("Discord order notification sent successfully", order._id.toString());
+  } catch (error) {
+    console.error("Discord notification error:", error);
+  }
 };
 
 /**
@@ -404,6 +505,7 @@ export const createOrder = async (orderData) => {
     ["admin order email", () => sendAdminOrderEmail(order)],
     ["admin order SMS", () => sendNotificationToAdmin(order)],
   ];
+  void notifyAdminOfNewOrder(order);
   const results = await Promise.allSettled(notifications.map(([, send]) => send()));
   results.forEach((result, index) => {
     if (result.status === "rejected") {

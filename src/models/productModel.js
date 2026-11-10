@@ -36,6 +36,30 @@ const carDetailsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const normalizeProductImages = (_document, value) => {
+  const images = Array.isArray(value.images)
+    ? value.images.filter((image) => {
+      try {
+        return typeof image?.url === "string" && new URL(image.url).protocol === "https:";
+      } catch {
+        return false;
+      }
+    })
+    : [];
+  const legacyImageUrl = [value.image_url, value.imageUrl, value.image].find((url) => {
+    try {
+      return typeof url === "string" && new URL(url).protocol === "https:";
+    } catch {
+      return false;
+    }
+  });
+
+  if (images.length === 0 && legacyImageUrl) images.push({ url: legacyImageUrl });
+  if (images.length > 0) value.image_url = images[0].url;
+  value.images = images;
+  return value;
+};
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -97,6 +121,7 @@ const productSchema = new mongoose.Schema(
     condition: { type: String, trim: true },
     location: { type: String, trim: true },
     sku: { type: String, trim: true, sparse: true },
+    image_url: { type: String, trim: true },
     images: [imageSchema],
     carDetails: carDetailsSchema,
     publicationStatus: {
@@ -108,8 +133,8 @@ const productSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: { virtuals: true, transform: normalizeProductImages },
+    toObject: { virtuals: true, transform: normalizeProductImages },
   }
 );
 

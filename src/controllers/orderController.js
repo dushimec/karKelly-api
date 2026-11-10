@@ -63,6 +63,13 @@ export const singleOrderDetailsController = async (req, res) => {
         message: "No order found",
       });
     }
+    const orderUserId = order.user?._id || order.user;
+    if (!req.user.isAdmin && orderUserId.toString() !== req.user._id.toString()) {
+      return res.status(403).send({
+        success: false,
+        message: "You are not allowed to view this order",
+      });
+    }
     res.status(200).send({
       success: true,
       message: "Order fetched successfully",
@@ -80,6 +87,8 @@ export const singleOrderDetailsController = async (req, res) => {
     });
   }
 };
+
+export const getAdminOrderDetailsController = singleOrderDetailsController;
 
 export const getAllOrdersController = async (req, res) => {
   try {
